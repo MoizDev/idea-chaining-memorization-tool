@@ -623,7 +623,7 @@ export default function IOMemorizer() {
                     </div>
 
                     {/* Mode selector */}
-                    <div style={{ display: "flex", gap: "4px" }}>
+                    <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
                         {modeLabels.map((label, i) => (
                             <button
                                 key={label}
@@ -644,6 +644,81 @@ export default function IOMemorizer() {
                                 {i + 1} {label}
                             </button>
                         ))}
+
+                        <div style={{ width: "1px", height: "20px", background: "rgba(255,255,255,0.08)", margin: "0 8px" }} />
+
+                        <button
+                            onClick={() => {
+                                const exportData = {
+                                    overrides,
+                                    exportedAt: new Date().toISOString(),
+                                };
+                                const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement("a");
+                                a.href = url;
+                                a.download = "memorizer-backup.json";
+                                a.click();
+                                URL.revokeObjectURL(url);
+                            }}
+                            style={{
+                                padding: "6px 10px",
+                                borderRadius: "6px",
+                                border: "1px solid rgba(255,255,255,0.08)",
+                                background: "transparent",
+                                color: "rgba(255,255,255,0.3)",
+                                fontSize: "11px",
+                                fontFamily: "'JetBrains Mono', monospace",
+                                cursor: "pointer",
+                                transition: "all 0.2s ease",
+                            }}
+                            title="Export all data as JSON"
+                        >
+                            ↓ Export
+                        </button>
+
+                        <button
+                            onClick={() => {
+                                const input = document.createElement("input");
+                                input.type = "file";
+                                input.accept = ".json";
+                                input.onchange = (e) => {
+                                    const file = e.target.files[0];
+                                    if (!file) return;
+                                    const reader = new FileReader();
+                                    reader.onload = (ev) => {
+                                        try {
+                                            const data = JSON.parse(ev.target.result);
+                                            if (data.overrides) {
+                                                setOverrides(data.overrides);
+                                                saveOverrides(data.overrides);
+                                                alert("Import successful!");
+                                            } else {
+                                                alert("Invalid file: no overrides found.");
+                                            }
+                                        } catch {
+                                            alert("Failed to parse JSON file.");
+                                        }
+                                    };
+                                    reader.readAsText(file);
+                                };
+                                input.click();
+                            }}
+                            style={{
+                                padding: "6px 10px",
+                                borderRadius: "6px",
+                                border: "1px solid rgba(255,255,255,0.08)",
+                                background: "transparent",
+                                color: "rgba(255,255,255,0.3)",
+                                fontSize: "11px",
+                                fontFamily: "'JetBrains Mono', monospace",
+                                cursor: "pointer",
+                                transition: "all 0.2s ease",
+                            }}
+                            title="Import JSON backup"
+                        >
+                            ↑ Import
+                        </button>
                     </div>
                 </div>
 
