@@ -345,13 +345,45 @@ function PolishedView({ sentences }) {
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
             <div style={{
-                fontSize: "9px",
-                letterSpacing: "2.5px",
-                textTransform: "uppercase",
-                color: "rgba(255,255,255,0.2)",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
                 marginBottom: "4px",
             }}>
-                Click each sentence to reveal
+                <div style={{
+                    fontSize: "9px",
+                    letterSpacing: "2.5px",
+                    textTransform: "uppercase",
+                    color: "rgba(255,255,255,0.2)",
+                }}>
+                    Click each sentence to reveal
+                </div>
+                <button
+                    onClick={() => {
+                        const allRevealed = sentences.every((_, i) => revealed[i]);
+                        if (allRevealed) {
+                            setRevealed({});
+                        } else {
+                            const all = {};
+                            sentences.forEach((_, i) => { all[i] = true; });
+                            setRevealed(all);
+                        }
+                    }}
+                    style={{
+                        padding: "4px 12px",
+                        borderRadius: "6px",
+                        border: "1px solid rgba(196,167,224,0.2)",
+                        background: "rgba(196,167,224,0.08)",
+                        color: "rgba(196,167,224,0.7)",
+                        fontSize: "10px",
+                        fontFamily: "'JetBrains Mono', monospace",
+                        cursor: "pointer",
+                        transition: "all 0.2s ease",
+                        letterSpacing: "0.5px",
+                    }}
+                >
+                    {sentences.every((_, i) => revealed[i]) ? "Hide All" : "Reveal All"}
+                </button>
             </div>
             {sentences.map((s, i) => {
                 const isRevealed = revealed[i];
