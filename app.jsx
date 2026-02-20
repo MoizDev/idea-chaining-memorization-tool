@@ -237,14 +237,15 @@ function RedactedWord({ word }) {
             <span style={{ color: "rgba(255,255,255,0.35)", fontWeight: 500 }}>{first}</span>
             {rest.length > 0 && (
                 <span style={{
-                    display: "inline-block",
+                    display: "inline",
                     background: "rgba(148, 163, 184, 0.18)",
                     borderRadius: "3px",
-                    width: `${Math.max(rest.length * 0.52, 0.4)}em`,
-                    height: "1.05em",
-                    verticalAlign: "text-bottom",
+                    color: "transparent",
+                    userSelect: "none",
                     marginLeft: "1px",
-                }} />
+                    paddingTop: "2px",
+                    paddingBottom: "2px",
+                }}>{rest}</span>
             )}
             {trailing && <span style={{ color: "rgba(255,255,255,0.2)" }}>{trailing}</span>}
         </span>
@@ -506,7 +507,7 @@ function PolishedView({ sentences, onSaveSentence }) {
             <div style={{
                 fontSize: "18px",
                 lineHeight: "2.4",
-                fontFamily: "'EB Garamond', Georgia, serif",
+                fontFamily: "'Inter', sans-serif",
             }}>
                 {sentences.map((s, i) => {
                     const isRevealed = revealed[i];
@@ -534,7 +535,7 @@ function PolishedView({ sentences, onSaveSentence }) {
                                         borderRadius: "8px",
                                         padding: "12px 16px",
                                         color: "rgba(255,255,255,0.9)",
-                                        fontFamily: "'EB Garamond', Georgia, serif",
+                                        fontFamily: "'Inter', sans-serif",
                                         fontSize: "18px",
                                         lineHeight: "1.7",
                                         margin: "8px 0",
@@ -648,7 +649,7 @@ export default function IOMemorizer() {
             fontFamily: "'JetBrains Mono', 'SF Mono', monospace",
             overflow: "hidden",
         }}>
-            <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet" />
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet" />
 
             <SideMap currentPhaseIndex={phaseIndex} currentParaIndex={paraIndex} />
 
@@ -915,7 +916,7 @@ export default function IOMemorizer() {
                                             fontSize: "20px",
                                             lineHeight: "1.7",
                                             color: "rgba(255,255,255,0.85)",
-                                            fontFamily: "'EB Garamond', Georgia, serif",
+                                            fontFamily: "'Inter', sans-serif",
                                             textAlign: "center",
                                         }}
                                     />
