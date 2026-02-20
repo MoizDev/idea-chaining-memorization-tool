@@ -433,140 +433,165 @@ function EditableText({ value, onSave, style, displayStyle }) {
     );
 }
 
+function PolishedWord({ word, revealed }) {
+    if (word.length === 0) return null;
+    let leading = '';
+    let trailing = '';
+    let core = word;
+    const leadMatch = core.match(/^([^a-zA-Z0-9]*)/);
+    if (leadMatch && leadMatch[1]) { leading = leadMatch[1]; core = core.slice(leading.length); }
+    const trailMatch = core.match(/([^a-zA-Z0-9]*)$/);
+    if (trailMatch && trailMatch[1]) { trailing = trailMatch[1]; core = core.slice(0, core.length - trailing.length); }
+
+    if (core.length === 0) {
+        return <span style={{ color: revealed ? "#818cf8" : "rgba(255,255,255,0.2)" }}>{word}</span>;
+    }
+
+    const first = core[0];
+    const rest = core.slice(1);
+
+    if (revealed) {
+        return <span style={{ color: "#818cf8" }}>{leading}{core}{trailing}</span>;
+    }
+
+    return (
+        <span>
+            {leading && <span style={{ color: "rgba(255,255,255,0.2)" }}>{leading}</span>}
+            <span style={{ color: "rgba(255,255,255,0.35)", fontWeight: 500 }}>{first}</span>
+            {rest.length > 0 && (
+                <span style={{
+                    color: "transparent",
+                    background: "rgba(148, 163, 184, 0.18)",
+                    borderRadius: "3px",
+                    userSelect: "none",
+                    paddingTop: "2px",
+                    paddingBottom: "2px",
+                }}>{rest}</span>
+            )}
+            {trailing && <span style={{ color: "rgba(255,255,255,0.2)" }}>{trailing}</span>}
+        </span>
+    );
+}
+
 function PolishedView({ sentences, onSaveSentence }) {
     const [revealed, setRevealed] = useState({});
-    const [editing, setEditing] = useState(null);
-    const [draft, setDraft] = useState("");
+    const [editMode, setEditMode] = useState(false);
+    const [drafts, setDrafts] = useState([]);
 
     useEffect(() => {
         setRevealed({});
-        setEditing(null);
+        setEditMode(false);
     }, [sentences]);
 
     const toggle = (i) => {
-        if (editing === i) return;
         setRevealed((prev) => ({ ...prev, [i]: !prev[i] }));
     };
 
-    const startEdit = (i) => {
-        setEditing(i);
-        setDraft(sentences[i]);
-        setRevealed((prev) => ({ ...prev, [i]: true }));
+    const enterEditMode = () => {
+        setEditMode(true);
+        setDrafts(sentences.map(s => s));
     };
 
-    const saveEdit = () => {
-        if (editing !== null && draft.trim() !== sentences[editing]) {
-            onSaveSentence(editing, draft.trim());
-        }
-        setEditing(null);
+    const saveAllEdits = () => {
+        drafts.forEach((d, i) => {
+            if (d.trim() !== sentences[i]) onSaveSentence(i, d.trim());
+        });
+        setEditMode(false);
     };
 
     const allRevealed = sentences.every((_, i) => revealed[i]);
 
+    if (editMode) {
+        return (
+            <div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+                    <div style={{ fontSize: "9px", letterSpacing: "2.5px", textTransform: "uppercase", color: "rgba(129,140,248,0.5)" }}>
+                        Editing Mode
+                    </div>
+                    <div style={{ display: "flex", gap: "8px" }}>
+                        <button onClick={() => setEditMode(false)} style={{
+                            padding: "4px 12px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.1)",
+                            background: "transparent", color: "rgba(255,255,255,0.4)", fontSize: "10px",
+                            fontFamily: "'JetBrains Mono', monospace", cursor: "pointer",
+                        }}>Cancel</button>
+                        <button onClick={saveAllEdits} style={{
+                            padding: "4px 12px", borderRadius: "6px", border: "1px solid rgba(129,140,248,0.3)",
+                            background: "rgba(129,140,248,0.15)", color: "rgba(129,140,248,0.9)", fontSize: "10px",
+                            fontFamily: "'JetBrains Mono', monospace", cursor: "pointer",
+                        }}>Save All</button>
+                    </div>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                    {drafts.map((d, i) => (
+                        <div key={i} style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                            <span style={{
+                                fontSize: "10px", color: "rgba(129,140,248,0.4)",
+                                fontFamily: "'JetBrains Mono', monospace", minWidth: "20px",
+                                paddingTop: "14px", textAlign: "right",
+                            }}>{i + 1}</span>
+                            <textarea
+                                value={d}
+                                onChange={(e) => { const next = [...drafts]; next[i] = e.target.value; setDrafts(next); }}
+                                style={{
+                                    flex: 1, minHeight: "60px", resize: "vertical", outline: "none",
+                                    background: "rgba(129,140,248,0.05)", border: "1px solid rgba(129,140,248,0.15)",
+                                    borderRadius: "8px", padding: "12px 16px", color: "rgba(255,255,255,0.9)",
+                                    fontFamily: "'Inter', sans-serif", fontSize: "16px", lineHeight: "1.7",
+                                }}
+                            />
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div>
-            <div style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: "20px",
-            }}>
-                <div style={{
-                    fontSize: "9px",
-                    letterSpacing: "2.5px",
-                    textTransform: "uppercase",
-                    color: "rgba(255,255,255,0.2)",
-                }}>
-                    Click to reveal · Double-click to edit
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+                <div style={{ fontSize: "9px", letterSpacing: "2.5px", textTransform: "uppercase", color: "rgba(255,255,255,0.2)" }}>
+                    Click to reveal
                 </div>
-                <button
-                    onClick={() => {
-                        if (allRevealed) setRevealed({});
-                        else {
-                            const all = {};
-                            sentences.forEach((_, i) => { all[i] = true; });
-                            setRevealed(all);
-                        }
-                    }}
-                    style={{
-                        padding: "4px 12px",
-                        borderRadius: "6px",
-                        border: "1px solid rgba(129,140,248,0.25)",
-                        background: "rgba(129,140,248,0.08)",
-                        color: "rgba(129,140,248,0.7)",
-                        fontSize: "10px",
-                        fontFamily: "'JetBrains Mono', monospace",
-                        cursor: "pointer",
-                        transition: "all 0.2s ease",
+                <div style={{ display: "flex", gap: "6px" }}>
+                    <button onClick={enterEditMode} style={{
+                        padding: "4px 12px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.1)",
+                        background: "transparent", color: "rgba(255,255,255,0.35)", fontSize: "10px",
+                        fontFamily: "'JetBrains Mono', monospace", cursor: "pointer", transition: "all 0.2s ease",
                         letterSpacing: "0.5px",
-                    }}
-                >
-                    {allRevealed ? "Hide All" : "Reveal All"}
-                </button>
+                    }}>✎ Edit</button>
+                    <button onClick={() => {
+                        if (allRevealed) setRevealed({});
+                        else { const all = {}; sentences.forEach((_, i) => { all[i] = true; }); setRevealed(all); }
+                    }} style={{
+                        padding: "4px 12px", borderRadius: "6px", border: "1px solid rgba(129,140,248,0.25)",
+                        background: "rgba(129,140,248,0.08)", color: "rgba(129,140,248,0.7)", fontSize: "10px",
+                        fontFamily: "'JetBrains Mono', monospace", cursor: "pointer", transition: "all 0.2s ease",
+                        letterSpacing: "0.5px",
+                    }}>{allRevealed ? "Hide All" : "Reveal All"}</button>
+                </div>
             </div>
-            <div style={{
-                fontSize: "18px",
-                lineHeight: "2.4",
-                fontFamily: "'Inter', sans-serif",
-            }}>
+            <div style={{ fontSize: "18px", lineHeight: "2.4", fontFamily: "'Inter', sans-serif" }}>
                 {sentences.map((s, i) => {
                     const isRevealed = revealed[i];
-
-                    if (editing === i) {
-                        return (
-                            <span key={i} style={{ display: "inline" }}>
-                                <textarea
-                                    autoFocus
-                                    value={draft}
-                                    onChange={(e) => setDraft(e.target.value)}
-                                    onBlur={saveEdit}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Escape") { setEditing(null); }
-                                        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); saveEdit(); }
-                                    }}
-                                    style={{
-                                        display: "inline-block",
-                                        width: "100%",
-                                        minHeight: "80px",
-                                        resize: "vertical",
-                                        outline: "none",
-                                        background: "rgba(129,140,248,0.08)",
-                                        border: "1px solid rgba(129,140,248,0.3)",
-                                        borderRadius: "8px",
-                                        padding: "12px 16px",
-                                        color: "rgba(255,255,255,0.9)",
-                                        fontFamily: "'Inter', sans-serif",
-                                        fontSize: "18px",
-                                        lineHeight: "1.7",
-                                        margin: "8px 0",
-                                    }}
-                                />
-                                {' '}
-                            </span>
-                        );
-                    }
-
+                    const words = s.split(' ');
                     return (
                         <span
                             key={i}
                             onClick={() => toggle(i)}
-                            onDoubleClick={(e) => { e.stopPropagation(); startEdit(i); }}
-                            style={{ cursor: "pointer" }}
+                            style={{
+                                cursor: "pointer",
+                                textDecoration: isRevealed ? "underline" : "none",
+                                textDecorationColor: "rgba(129, 140, 248, 0.3)",
+                                textUnderlineOffset: "4px",
+                                textDecorationThickness: "2px",
+                            }}
                         >
-                            {isRevealed ? (
-                                <span style={{
-                                    color: "#818cf8",
-                                    textDecoration: "underline",
-                                    textDecorationColor: "rgba(129, 140, 248, 0.3)",
-                                    textUnderlineOffset: "4px",
-                                    textDecorationThickness: "2px",
-                                    transition: "color 0.2s ease",
-                                }}>
-                                    {s}
+                            {words.map((word, wi) => (
+                                <span key={wi}>
+                                    {wi > 0 && ' '}
+                                    <PolishedWord word={word} revealed={isRevealed} />
                                 </span>
-                            ) : (
-                                <RedactedSentence text={s} />
-                            )}
+                            ))}
                             {' '}
                         </span>
                     );
