@@ -219,16 +219,49 @@ const allAnchors = SPEECH_DATA.phases.flatMap((phase, pi) =>
     }))
 );
 
-function redactWord(word) {
-    if (word.length === 0) return "";
-    let first = word[0];
-    let rest = word.slice(1);
-    let redacted = rest.replace(/[a-zA-Z]/g, "·");
-    return first + redacted;
+function RedactedWord({ word }) {
+    if (word.length === 0) return null;
+    let leading = '';
+    let trailing = '';
+    let core = word;
+    const leadMatch = core.match(/^([^a-zA-Z0-9]*)/);
+    if (leadMatch && leadMatch[1]) { leading = leadMatch[1]; core = core.slice(leading.length); }
+    const trailMatch = core.match(/([^a-zA-Z0-9]*)$/);
+    if (trailMatch && trailMatch[1]) { trailing = trailMatch[1]; core = core.slice(0, core.length - trailing.length); }
+    if (core.length === 0) return <span style={{ color: "rgba(255,255,255,0.2)" }}>{word}</span>;
+    const first = core[0];
+    const rest = core.slice(1);
+    return (
+        <span>
+            {leading && <span style={{ color: "rgba(255,255,255,0.2)" }}>{leading}</span>}
+            <span style={{ color: "rgba(255,255,255,0.35)", fontWeight: 500 }}>{first}</span>
+            {rest.length > 0 && (
+                <span style={{
+                    display: "inline-block",
+                    background: "rgba(148, 163, 184, 0.18)",
+                    borderRadius: "3px",
+                    width: `${Math.max(rest.length * 0.52, 0.4)}em`,
+                    height: "1.05em",
+                    verticalAlign: "text-bottom",
+                    marginLeft: "1px",
+                }} />
+            )}
+            {trailing && <span style={{ color: "rgba(255,255,255,0.2)" }}>{trailing}</span>}
+        </span>
+    );
 }
 
-function redactSentence(sentence) {
-    return sentence.split(" ").map(redactWord).join(" ");
+function RedactedSentence({ text }) {
+    return (
+        <span>
+            {text.split(' ').map((word, wi) => (
+                <span key={wi}>
+                    {wi > 0 && ' '}
+                    <RedactedWord word={word} />
+                </span>
+            ))}
+        </span>
+    );
 }
 
 function SideMap({ currentPhaseIndex, currentParaIndex }) {
@@ -401,22 +434,41 @@ function EditableText({ value, onSave, style, displayStyle }) {
 
 function PolishedView({ sentences, onSaveSentence }) {
     const [revealed, setRevealed] = useState({});
+    const [editing, setEditing] = useState(null);
+    const [draft, setDraft] = useState("");
 
     useEffect(() => {
         setRevealed({});
+        setEditing(null);
     }, [sentences]);
 
     const toggle = (i) => {
+        if (editing === i) return;
         setRevealed((prev) => ({ ...prev, [i]: !prev[i] }));
     };
 
+    const startEdit = (i) => {
+        setEditing(i);
+        setDraft(sentences[i]);
+        setRevealed((prev) => ({ ...prev, [i]: true }));
+    };
+
+    const saveEdit = () => {
+        if (editing !== null && draft.trim() !== sentences[editing]) {
+            onSaveSentence(editing, draft.trim());
+        }
+        setEditing(null);
+    };
+
+    const allRevealed = sentences.every((_, i) => revealed[i]);
+
     return (
-        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+        <div>
             <div style={{
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
-                marginBottom: "4px",
+                marginBottom: "20px",
             }}>
                 <div style={{
                     fontSize: "9px",
@@ -428,10 +480,8 @@ function PolishedView({ sentences, onSaveSentence }) {
                 </div>
                 <button
                     onClick={() => {
-                        const allRevealed = sentences.every((_, i) => revealed[i]);
-                        if (allRevealed) {
-                            setRevealed({});
-                        } else {
+                        if (allRevealed) setRevealed({});
+                        else {
                             const all = {};
                             sentences.forEach((_, i) => { all[i] = true; });
                             setRevealed(all);
@@ -440,9 +490,9 @@ function PolishedView({ sentences, onSaveSentence }) {
                     style={{
                         padding: "4px 12px",
                         borderRadius: "6px",
-                        border: "1px solid rgba(196,167,224,0.2)",
-                        background: "rgba(196,167,224,0.08)",
-                        color: "rgba(196,167,224,0.7)",
+                        border: "1px solid rgba(129,140,248,0.25)",
+                        background: "rgba(129,140,248,0.08)",
+                        color: "rgba(129,140,248,0.7)",
                         fontSize: "10px",
                         fontFamily: "'JetBrains Mono', monospace",
                         cursor: "pointer",
@@ -450,45 +500,77 @@ function PolishedView({ sentences, onSaveSentence }) {
                         letterSpacing: "0.5px",
                     }}
                 >
-                    {sentences.every((_, i) => revealed[i]) ? "Hide All" : "Reveal All"}
+                    {allRevealed ? "Hide All" : "Reveal All"}
                 </button>
             </div>
-            {sentences.map((s, i) => {
-                const isRevealed = revealed[i];
-                return (
-                    <div
-                        key={i}
-                        onClick={() => toggle(i)}
-                        style={{
-                            padding: "14px 18px",
-                            borderRadius: "8px",
-                            background: isRevealed
-                                ? "rgba(230,180,110,0.06)"
-                                : "rgba(255,255,255,0.03)",
-                            border: `1px solid ${isRevealed ? "rgba(230,180,110,0.15)" : "rgba(255,255,255,0.06)"}`,
-                            cursor: "pointer",
-                            transition: "all 0.3s ease",
-                            fontSize: "15px",
-                            lineHeight: "1.7",
-                            fontFamily: "'EB Garamond', 'Georgia', serif",
-                            color: isRevealed ? "rgba(255,255,255,0.88)" : "rgba(255,255,255,0.35)",
-                            letterSpacing: isRevealed ? "0" : "0.5px",
-                            userSelect: isRevealed ? "text" : "none",
-                            position: "relative",
-                        }}
-                    >
-                        {isRevealed ? (
-                            <>
-                                <EditableText
-                                    value={s}
-                                    onSave={(newVal) => onSaveSentence(i, newVal)}
-                                    style={{ fontSize: "15px", lineHeight: "1.7", fontFamily: "'EB Garamond', 'Georgia', serif" }}
+            <div style={{
+                fontSize: "18px",
+                lineHeight: "2.4",
+                fontFamily: "'EB Garamond', Georgia, serif",
+            }}>
+                {sentences.map((s, i) => {
+                    const isRevealed = revealed[i];
+
+                    if (editing === i) {
+                        return (
+                            <span key={i} style={{ display: "inline" }}>
+                                <textarea
+                                    autoFocus
+                                    value={draft}
+                                    onChange={(e) => setDraft(e.target.value)}
+                                    onBlur={saveEdit}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Escape") { setEditing(null); }
+                                        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); saveEdit(); }
+                                    }}
+                                    style={{
+                                        display: "inline-block",
+                                        width: "100%",
+                                        minHeight: "80px",
+                                        resize: "vertical",
+                                        outline: "none",
+                                        background: "rgba(129,140,248,0.08)",
+                                        border: "1px solid rgba(129,140,248,0.3)",
+                                        borderRadius: "8px",
+                                        padding: "12px 16px",
+                                        color: "rgba(255,255,255,0.9)",
+                                        fontFamily: "'EB Garamond', Georgia, serif",
+                                        fontSize: "18px",
+                                        lineHeight: "1.7",
+                                        margin: "8px 0",
+                                    }}
                                 />
-                            </>
-                        ) : redactSentence(s)}
-                    </div>
-                );
-            })}
+                                {' '}
+                            </span>
+                        );
+                    }
+
+                    return (
+                        <span
+                            key={i}
+                            onClick={() => toggle(i)}
+                            onDoubleClick={(e) => { e.stopPropagation(); startEdit(i); }}
+                            style={{ cursor: "pointer" }}
+                        >
+                            {isRevealed ? (
+                                <span style={{
+                                    color: "#818cf8",
+                                    textDecoration: "underline",
+                                    textDecorationColor: "rgba(129, 140, 248, 0.3)",
+                                    textUnderlineOffset: "4px",
+                                    textDecorationThickness: "2px",
+                                    transition: "color 0.2s ease",
+                                }}>
+                                    {s}
+                                </span>
+                            ) : (
+                                <RedactedSentence text={s} />
+                            )}
+                            {' '}
+                        </span>
+                    );
+                })}
+            </div>
         </div>
     );
 }
@@ -740,11 +822,11 @@ export default function IOMemorizer() {
                     display: "flex",
                     alignItems: mode === 3 ? "flex-start" : "center",
                     justifyContent: "center",
-                    padding: mode === 3 ? "20px 48px 48px" : "48px",
+                    padding: mode === 3 ? "24px 48px 48px" : "48px",
                     overflowY: "auto",
                 }}>
                     <div style={{
-                        maxWidth: "680px",
+                        maxWidth: "720px",
                         width: "100%",
                     }}>
                         {mode === 1 && (
@@ -771,33 +853,25 @@ export default function IOMemorizer() {
                                     textAlign: "center",
                                     boxShadow: "0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(230,180,110,0.06)",
                                 }}>
-                                    <div style={{
-                                        fontSize: "36px",
-                                        fontWeight: 700,
-                                        color: "#e6b46e",
-                                        letterSpacing: "2px",
-                                        fontFamily: "'JetBrains Mono', monospace",
-                                        textShadow: "0 0 40px rgba(230,180,110,0.2)",
-                                    }}>
-                                        <EditableText
-                                            value={para.anchor}
-                                            onSave={(v) => saveField("anchor", v)}
-                                            style={{
-                                                fontSize: "36px",
-                                                fontWeight: 700,
-                                                color: "#e6b46e",
-                                                letterSpacing: "2px",
-                                                fontFamily: "'JetBrains Mono', monospace",
-                                            }}
-                                        />
-                                    </div>
+                                    <EditableText
+                                        value={para.anchor}
+                                        onSave={(v) => saveField("anchor", v)}
+                                        style={{
+                                            fontSize: "36px",
+                                            fontWeight: 700,
+                                            color: "#e6b46e",
+                                            letterSpacing: "2px",
+                                            fontFamily: "'JetBrains Mono', monospace",
+                                            textShadow: "0 0 40px rgba(230,180,110,0.2)",
+                                        }}
+                                    />
                                 </div>
                                 <div style={{
                                     fontSize: "12px",
                                     color: "rgba(255,255,255,0.2)",
                                     marginTop: "8px",
                                 }}>
-                                    Press <span style={{ color: "rgba(139,184,224,0.6)", fontWeight: 600 }}>2</span> for argument · <span style={{ color: "rgba(196,167,224,0.6)", fontWeight: 600 }}>3</span> for polished
+                                    Press <span style={{ color: "rgba(139,184,224,0.6)", fontWeight: 600 }}>2</span> for argument · <span style={{ color: "rgba(129,140,248,0.6)", fontWeight: 600 }}>3</span> for polished
                                 </div>
                             </div>
                         )}
@@ -834,32 +908,24 @@ export default function IOMemorizer() {
                                     border: "1px solid rgba(139,184,224,0.1)",
                                     boxShadow: "0 8px 32px rgba(0,0,0,0.3)",
                                 }}>
-                                    <div style={{
-                                        fontSize: "20px",
-                                        lineHeight: "1.7",
-                                        color: "rgba(255,255,255,0.85)",
-                                        fontFamily: "'EB Garamond', Georgia, serif",
-                                        textAlign: "center",
-                                    }}>
-                                        <EditableText
-                                            value={para.blunt}
-                                            onSave={(v) => saveField("blunt", v)}
-                                            style={{
-                                                fontSize: "20px",
-                                                lineHeight: "1.7",
-                                                color: "rgba(255,255,255,0.85)",
-                                                fontFamily: "'EB Garamond', Georgia, serif",
-                                                textAlign: "center",
-                                            }}
-                                        />
-                                    </div>
+                                    <EditableText
+                                        value={para.blunt}
+                                        onSave={(v) => saveField("blunt", v)}
+                                        style={{
+                                            fontSize: "20px",
+                                            lineHeight: "1.7",
+                                            color: "rgba(255,255,255,0.85)",
+                                            fontFamily: "'EB Garamond', Georgia, serif",
+                                            textAlign: "center",
+                                        }}
+                                    />
                                 </div>
                                 <div style={{
                                     fontSize: "12px",
                                     color: "rgba(255,255,255,0.2)",
                                     marginTop: "8px",
                                 }}>
-                                    Press <span style={{ color: "rgba(230,180,110,0.6)", fontWeight: 600 }}>1</span> for anchor · <span style={{ color: "rgba(196,167,224,0.6)", fontWeight: 600 }}>3</span> for polished
+                                    Press <span style={{ color: "rgba(230,180,110,0.6)", fontWeight: 600 }}>1</span> for anchor · <span style={{ color: "rgba(129,140,248,0.6)", fontWeight: 600 }}>3</span> for polished
                                 </div>
                             </div>
                         )}
@@ -870,24 +936,19 @@ export default function IOMemorizer() {
                                     display: "flex",
                                     alignItems: "center",
                                     gap: "12px",
-                                    marginBottom: "20px",
+                                    marginBottom: "8px",
                                 }}>
-                                    <div style={{
-                                        fontSize: "9px",
-                                        letterSpacing: "3px",
-                                        textTransform: "uppercase",
-                                        color: "rgba(196,167,224,0.4)",
-                                    }}>
-                                        Polished
-                                    </div>
-                                    <div style={{
-                                        fontSize: "13px",
-                                        color: "rgba(230,180,110,0.5)",
-                                        fontWeight: 600,
-                                        letterSpacing: "1px",
-                                    }}>
-                                        {para.anchor}
-                                    </div>
+                                    <EditableText
+                                        value={para.anchor}
+                                        onSave={(v) => saveField("anchor", v)}
+                                        style={{
+                                            fontSize: "14px",
+                                            color: "#e6b46e",
+                                            fontWeight: 600,
+                                            letterSpacing: "1px",
+                                            fontFamily: "'JetBrains Mono', monospace",
+                                        }}
+                                    />
                                 </div>
                                 <PolishedView
                                     sentences={para.polished}
