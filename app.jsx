@@ -580,10 +580,6 @@ function PolishedView({ sentences, onSaveSentence }) {
                             onClick={() => toggle(i)}
                             style={{
                                 cursor: "pointer",
-                                textDecoration: isRevealed ? "underline" : "none",
-                                textDecorationColor: "rgba(129, 140, 248, 0.3)",
-                                textUnderlineOffset: "4px",
-                                textDecorationThickness: "2px",
                             }}
                         >
                             {words.map((word, wi) => (
