@@ -331,7 +331,75 @@ function SideMap({ currentPhaseIndex, currentParaIndex }) {
     );
 }
 
-function PolishedView({ sentences }) {
+const STORAGE_KEY = "memorizer_overrides";
+
+function loadOverrides() {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        return raw ? JSON.parse(raw) : {};
+    } catch { return {}; }
+}
+
+function saveOverrides(overrides) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(overrides));
+}
+
+function EditableText({ value, onSave, style, displayStyle }) {
+    const [editing, setEditing] = useState(false);
+    const [draft, setDraft] = useState(value);
+
+    useEffect(() => { setDraft(value); }, [value]);
+
+    if (editing) {
+        return (
+            <textarea
+                autoFocus
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onBlur={() => {
+                    if (draft.trim() !== value) onSave(draft.trim());
+                    setEditing(false);
+                }}
+                onKeyDown={(e) => {
+                    if (e.key === "Escape") { setDraft(value); setEditing(false); }
+                    if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        if (draft.trim() !== value) onSave(draft.trim());
+                        setEditing(false);
+                    }
+                }}
+                style={{
+                    ...style,
+                    ...(displayStyle || {}),
+                    width: "100%",
+                    resize: "vertical",
+                    outline: "none",
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(230,180,110,0.3)",
+                    borderRadius: "8px",
+                    padding: "12px 16px",
+                    color: "rgba(255,255,255,0.9)",
+                    fontFamily: "inherit",
+                    fontSize: "inherit",
+                    lineHeight: "inherit",
+                    minHeight: "60px",
+                }}
+            />
+        );
+    }
+
+    return (
+        <div
+            onDoubleClick={() => setEditing(true)}
+            title="Double-click to edit"
+            style={{ ...style, ...(displayStyle || {}), cursor: "pointer" }}
+        >
+            {value}
+        </div>
+    );
+}
+
+function PolishedView({ sentences, onSaveSentence }) {
     const [revealed, setRevealed] = useState({});
 
     useEffect(() => {
@@ -356,7 +424,7 @@ function PolishedView({ sentences }) {
                     textTransform: "uppercase",
                     color: "rgba(255,255,255,0.2)",
                 }}>
-                    Click each sentence to reveal
+                    Click to reveal · Double-click to edit
                 </div>
                 <button
                     onClick={() => {
@@ -390,7 +458,7 @@ function PolishedView({ sentences }) {
                 return (
                     <div
                         key={i}
-                        onClick={() => toggle(i)}
+                        onClick={() => { if (!isRevealed) toggle(i); }}
                         style={{
                             padding: "14px 18px",
                             borderRadius: "8px",
@@ -406,9 +474,31 @@ function PolishedView({ sentences }) {
                             color: isRevealed ? "rgba(255,255,255,0.88)" : "rgba(255,255,255,0.35)",
                             letterSpacing: isRevealed ? "0" : "0.5px",
                             userSelect: isRevealed ? "text" : "none",
+                            position: "relative",
                         }}
                     >
-                        {isRevealed ? s : redactSentence(s)}
+                        {isRevealed ? (
+                            <>
+                                <EditableText
+                                    value={s}
+                                    onSave={(newVal) => onSaveSentence(i, newVal)}
+                                    style={{ fontSize: "15px", lineHeight: "1.7", fontFamily: "'EB Garamond', 'Georgia', serif" }}
+                                />
+                                <div
+                                    onClick={(e) => { e.stopPropagation(); toggle(i); }}
+                                    style={{
+                                        position: "absolute",
+                                        top: "6px",
+                                        right: "8px",
+                                        fontSize: "9px",
+                                        color: "rgba(255,255,255,0.15)",
+                                        cursor: "pointer",
+                                    }}
+                                >
+                                    hide
+                                </div>
+                            </>
+                        ) : redactSentence(s)}
                     </div>
                 );
             })}
@@ -420,9 +510,24 @@ export default function IOMemorizer() {
     const [phaseIndex, setPhaseIndex] = useState(0);
     const [paraIndex, setParaIndex] = useState(0);
     const [mode, setMode] = useState(1);
+    const [overrides, setOverrides] = useState(() => loadOverrides());
 
     const phase = SPEECH_DATA.phases[phaseIndex];
-    const para = phase.paragraphs[paraIndex];
+    const origPara = phase.paragraphs[paraIndex];
+
+    // Build the displayed paragraph by merging overrides
+    const oKey = (field) => `${phase.id}_${paraIndex}_${field}`;
+    const para = {
+        anchor: overrides[oKey("anchor")] ?? origPara.anchor,
+        blunt: overrides[oKey("blunt")] ?? origPara.blunt,
+        polished: origPara.polished.map((s, i) => overrides[oKey(`polished_${i}`)] ?? s),
+    };
+
+    const saveField = (field, value) => {
+        const next = { ...overrides, [oKey(field)]: value };
+        setOverrides(next);
+        saveOverrides(next);
+    };
 
     const goNext = useCallback(() => {
         if (paraIndex < phase.paragraphs.length - 1) {
@@ -612,7 +717,17 @@ export default function IOMemorizer() {
                                         fontFamily: "'JetBrains Mono', monospace",
                                         textShadow: "0 0 40px rgba(230,180,110,0.2)",
                                     }}>
-                                        {para.anchor}
+                                        <EditableText
+                                            value={para.anchor}
+                                            onSave={(v) => saveField("anchor", v)}
+                                            style={{
+                                                fontSize: "36px",
+                                                fontWeight: 700,
+                                                color: "#e6b46e",
+                                                letterSpacing: "2px",
+                                                fontFamily: "'JetBrains Mono', monospace",
+                                            }}
+                                        />
                                     </div>
                                 </div>
                                 <div style={{
@@ -664,7 +779,17 @@ export default function IOMemorizer() {
                                         fontFamily: "'EB Garamond', Georgia, serif",
                                         textAlign: "center",
                                     }}>
-                                        {para.blunt}
+                                        <EditableText
+                                            value={para.blunt}
+                                            onSave={(v) => saveField("blunt", v)}
+                                            style={{
+                                                fontSize: "20px",
+                                                lineHeight: "1.7",
+                                                color: "rgba(255,255,255,0.85)",
+                                                fontFamily: "'EB Garamond', Georgia, serif",
+                                                textAlign: "center",
+                                            }}
+                                        />
                                     </div>
                                 </div>
                                 <div style={{
@@ -702,7 +827,10 @@ export default function IOMemorizer() {
                                         {para.anchor}
                                     </div>
                                 </div>
-                                <PolishedView sentences={para.polished} />
+                                <PolishedView
+                                    sentences={para.polished}
+                                    onSaveSentence={(i, v) => saveField(`polished_${i}`, v)}
+                                />
                             </div>
                         )}
                     </div>
