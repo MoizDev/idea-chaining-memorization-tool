@@ -458,7 +458,7 @@ function PolishedView({ sentences, onSaveSentence }) {
                 return (
                     <div
                         key={i}
-                        onClick={() => { if (!isRevealed) toggle(i); }}
+                        onClick={() => toggle(i)}
                         style={{
                             padding: "14px 18px",
                             borderRadius: "8px",
@@ -484,19 +484,6 @@ function PolishedView({ sentences, onSaveSentence }) {
                                     onSave={(newVal) => onSaveSentence(i, newVal)}
                                     style={{ fontSize: "15px", lineHeight: "1.7", fontFamily: "'EB Garamond', 'Georgia', serif" }}
                                 />
-                                <div
-                                    onClick={(e) => { e.stopPropagation(); toggle(i); }}
-                                    style={{
-                                        position: "absolute",
-                                        top: "6px",
-                                        right: "8px",
-                                        fontSize: "9px",
-                                        color: "rgba(255,255,255,0.15)",
-                                        cursor: "pointer",
-                                    }}
-                                >
-                                    hide
-                                </div>
                             </>
                         ) : redactSentence(s)}
                     </div>
