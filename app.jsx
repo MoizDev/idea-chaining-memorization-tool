@@ -643,6 +643,8 @@ export default function IOMemorizer() {
 
     useEffect(() => {
         const handler = (e) => {
+            const tag = document.activeElement?.tagName;
+            if (tag === "TEXTAREA" || tag === "INPUT") return;
             if (e.key === "1") setMode(1);
             else if (e.key === "2") setMode(2);
             else if (e.key === "3") setMode(3);
