@@ -144,11 +144,11 @@ const SPEECH_DATA = {
                     anchor: "DESTITUTE / RESTITUTION",
                     blunt: "Internal rhyme within a single line. 'Destitute' rhymes with 'restitution' — trauma word becomes resilience word in one breath. Suffering contains the seed of its own recovery. Deprivation drives restitution.",
                     polished: [
-                        "Miranda then uses internal rhyme to represent trauma transforming into resilience within a single line.",
+                        "Miranda then uses internal rhyme to fuse trauma and resilience within a single line.",
                         "On lines 29–30, Burr narrates, \"He woulda been dead or destitute / Without a cent of restitution.\"",
-                        "Through the rhyme, Miranda turns a word of trauma — \"destitute\" — into a word of resilience — \"restitution\" — within the same breath.",
-                        "Suffering itself contains the seed of its own recovery.",
-                        "Hamilton's trauma is not the opposite of his resilience but its origin — deprivation drives restitution."
+                        "The diction is deliberate: Miranda could rhyme \"destitute\" with any word, but he chooses \"restitution\" — a word meaning recovery.",
+                        "Even as the sentence denies Hamilton that recovery, Miranda's word choice plants it inside the trauma.",
+                        "The rhyme then locks \"destitute\" and \"restitution\" together, making deprivation and recovery linguistically inseparable — arguing that Hamilton's trauma already contains his resilience."
                     ]
                 },
                 {
