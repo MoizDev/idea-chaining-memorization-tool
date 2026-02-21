@@ -265,7 +265,7 @@ function RedactedSentence({ text }) {
     );
 }
 
-function SideMap({ currentPhaseIndex, currentParaIndex }) {
+function SideMap({ currentPhaseIndex, currentParaIndex, onNavigate }) {
     let globalCurrent = 0;
     for (let i = 0; i < currentPhaseIndex; i++) {
         globalCurrent += SPEECH_DATA.phases[i].paragraphs.length;
@@ -318,6 +318,7 @@ function SideMap({ currentPhaseIndex, currentParaIndex }) {
                         return (
                             <div
                                 key={idx}
+                                onClick={() => onNavigate(pi, idx)}
                                 style={{
                                     display: "flex",
                                     alignItems: "center",
@@ -325,6 +326,7 @@ function SideMap({ currentPhaseIndex, currentParaIndex }) {
                                     padding: "5px 4px",
                                     borderRadius: "4px",
                                     background: isCurrent ? "rgba(230,180,110,0.1)" : "transparent",
+                                    cursor: "pointer",
                                     transition: "all 0.3s ease",
                                 }}
                             >
@@ -671,7 +673,7 @@ export default function IOMemorizer() {
         }}>
             <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet" />
 
-            <SideMap currentPhaseIndex={phaseIndex} currentParaIndex={paraIndex} />
+            <SideMap currentPhaseIndex={phaseIndex} currentParaIndex={paraIndex} onNavigate={(pi, idx) => { setPhaseIndex(pi); setParaIndex(idx); }} />
 
             <div style={{
                 flex: 1,
