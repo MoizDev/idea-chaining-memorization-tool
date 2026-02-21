@@ -473,13 +473,11 @@ function PolishedWord({ word, revealed }) {
     );
 }
 
-function PolishedView({ sentences, onSaveSentence }) {
-    const [revealed, setRevealed] = useState({});
+function PolishedView({ sentences, onSaveSentence, revealed, setRevealed }) {
     const [editMode, setEditMode] = useState(false);
     const [drafts, setDrafts] = useState([]);
 
     useEffect(() => {
-        setRevealed({});
         setEditMode(false);
     }, [sentences]);
 
@@ -602,6 +600,7 @@ export default function IOMemorizer() {
     const [paraIndex, setParaIndex] = useState(0);
     const [mode, setMode] = useState(1);
     const [overrides, setOverrides] = useState(() => loadOverrides());
+    const [revealedMap, setRevealedMap] = useState({});
 
     const phase = SPEECH_DATA.phases[phaseIndex];
     const origPara = phase.paragraphs[paraIndex];
@@ -627,7 +626,6 @@ export default function IOMemorizer() {
             setPhaseIndex(phaseIndex + 1);
             setParaIndex(0);
         }
-        setMode(1);
     }, [paraIndex, phaseIndex, phase.paragraphs.length]);
 
     const goPrev = useCallback(() => {
@@ -638,7 +636,6 @@ export default function IOMemorizer() {
             setPhaseIndex(phaseIndex - 1);
             setParaIndex(prevPhase.paragraphs.length - 1);
         }
-        setMode(1);
     }, [paraIndex, phaseIndex]);
 
     useEffect(() => {
@@ -695,7 +692,7 @@ export default function IOMemorizer() {
                         {SPEECH_DATA.phases.map((p, i) => (
                             <button
                                 key={p.id}
-                                onClick={() => { setPhaseIndex(i); setParaIndex(0); setMode(1); }}
+                                onClick={() => { setPhaseIndex(i); setParaIndex(0); }}
                                 style={{
                                     padding: "6px 14px",
                                     borderRadius: "6px",
@@ -825,7 +822,7 @@ export default function IOMemorizer() {
                     {phase.paragraphs.map((_, i) => (
                         <button
                             key={i}
-                            onClick={() => { setParaIndex(i); setMode(1); }}
+                            onClick={() => { setParaIndex(i); }}
                             style={{
                                 width: i === paraIndex ? "28px" : "8px",
                                 height: "8px",
@@ -977,6 +974,11 @@ export default function IOMemorizer() {
                                 <PolishedView
                                     sentences={para.polished}
                                     onSaveSentence={(i, v) => saveField(`polished_${i}`, v)}
+                                    revealed={revealedMap[`${phase.id}_${paraIndex}`] || {}}
+                                    setRevealed={(r) => setRevealedMap(prev => ({
+                                        ...prev,
+                                        [`${phase.id}_${paraIndex}`]: typeof r === 'function' ? r(prev[`${phase.id}_${paraIndex}`] || {}) : r,
+                                    }))}
                                 />
                             </div>
                         )}
