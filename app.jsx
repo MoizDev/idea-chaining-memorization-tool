@@ -155,10 +155,11 @@ const SPEECH_DATA = {
                     anchor: "TRADIN'",
                     blunt: "Accumulation across multiple wounds. 'Tradin' sugar cane, scammin' for every book' — each loss gets a specific counter-action. Wound by wound, not one leap. The incomplete gerunds (-ing) show resilience is ongoing, not a destination.",
                     polished: [
-                        "Finally, Miranda uses accumulation to extend this transformation across multiple wounds.",
-                        "\"Tradin' sugar cane… Scammin' for every book\" converts further deprivations into resilient responses: poverty becomes trading, lack of education becomes scamming for books.",
-                        "Miranda argues individuals transform trauma into resilience not in one leap but wound by wound, each loss answered with its specific counter-action.",
-                        "Even the grammar reinforces this: the incomplete gerunds — tradin', plannin', scammin' — suggest resilience is not a destination but an ongoing conversion of trauma into action."
+                        "Finally, Miranda uses accumulation to extend this conversion across multiple traumas.",
+                        "On Burr's lines 32–34, \"Tradin' sugar cane… Scammin' for every book,\" each item pairs a deprivation with its own resilient action — poverty with trading, lack of education with scamming.",
+                        "The force of accumulation is its volume: by piling instance upon instance, Miranda transforms what could be a single coincidence into an undeniable pattern.",
+                        "Miranda renders each action as an incomplete gerund — tradin', plannin', scammin' — whose lack of grammatical closure argues this pattern is ongoing.",
+                        "Through the accumulation, Miranda articulates the Global Issue: traumatic experiences inspire resilience not once but repeatedly, each loss generating its own counter-action."
                     ]
                 },
                 {
