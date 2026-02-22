@@ -268,7 +268,7 @@ function RedactedSentence({ text }) {
     );
 }
 
-function SideMap({ currentPhaseIndex, currentParaIndex, onNavigate }) {
+function SideMap({ currentPhaseIndex, currentParaIndex, onNavigate, practiceMode, onTogglePractice }) {
     let globalCurrent = 0;
     for (let i = 0; i < currentPhaseIndex; i++) {
         globalCurrent += SPEECH_DATA.phases[i].paragraphs.length;
@@ -279,93 +279,325 @@ function SideMap({ currentPhaseIndex, currentParaIndex, onNavigate }) {
         <div style={{
             display: "flex",
             flexDirection: "column",
-            gap: "2px",
-            padding: "20px 16px",
             background: "rgba(255,255,255,0.02)",
             borderRight: "1px solid rgba(255,255,255,0.06)",
             minWidth: "200px",
             maxWidth: "220px",
-            overflowY: "auto",
             fontFamily: "'JetBrains Mono', 'SF Mono', monospace",
         }}>
             <div style={{
-                fontSize: "9px",
-                letterSpacing: "3px",
-                textTransform: "uppercase",
-                color: "rgba(255,255,255,0.25)",
-                marginBottom: "12px",
-                paddingLeft: "4px",
+                flex: 1,
+                display: "flex",
+                flexDirection: "column",
+                gap: "2px",
+                padding: "20px 16px",
+                overflowY: "auto",
             }}>
-                Anchor Chain
+                <div style={{
+                    fontSize: "9px",
+                    letterSpacing: "3px",
+                    textTransform: "uppercase",
+                    color: "rgba(255,255,255,0.25)",
+                    marginBottom: "12px",
+                    paddingLeft: "4px",
+                }}>
+                    Anchor Chain
+                </div>
+                {SPEECH_DATA.phases.map((phase, pi) => (
+                    <div key={phase.id} style={{ marginBottom: "8px" }}>
+                        <div style={{
+                            fontSize: "8px",
+                            letterSpacing: "2px",
+                            textTransform: "uppercase",
+                            color: pi === currentPhaseIndex && !practiceMode ? "rgba(230,180,110,0.7)" : "rgba(255,255,255,0.15)",
+                            marginBottom: "4px",
+                            paddingLeft: "4px",
+                            transition: "color 0.3s ease",
+                        }}>
+                            {phase.shortTitle}
+                        </div>
+                        {phase.paragraphs.map((p, idx) => {
+                            let globalIdx = 0;
+                            for (let i = 0; i < pi; i++) globalIdx += SPEECH_DATA.phases[i].paragraphs.length;
+                            globalIdx += idx;
+                            const isCurrent = globalIdx === globalCurrent && !practiceMode;
+                            const isPast = globalIdx < globalCurrent && !practiceMode;
+
+                            return (
+                                <div
+                                    key={idx}
+                                    onClick={() => onNavigate(pi, idx)}
+                                    style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "8px",
+                                        padding: "5px 4px",
+                                        borderRadius: "4px",
+                                        background: isCurrent ? "rgba(230,180,110,0.1)" : "transparent",
+                                        cursor: "pointer",
+                                        transition: "all 0.3s ease",
+                                    }}
+                                >
+                                    <div style={{
+                                        width: "5px",
+                                        height: "5px",
+                                        borderRadius: "50%",
+                                        flexShrink: 0,
+                                        background: isCurrent
+                                            ? "#e6b46e"
+                                            : isPast
+                                                ? "rgba(230,180,110,0.3)"
+                                                : "rgba(255,255,255,0.1)",
+                                        boxShadow: isCurrent ? "0 0 8px rgba(230,180,110,0.4)" : "none",
+                                        transition: "all 0.3s ease",
+                                    }} />
+                                    <div style={{
+                                        fontSize: "11px",
+                                        color: isCurrent
+                                            ? "#e6b46e"
+                                            : isPast
+                                                ? "rgba(255,255,255,0.3)"
+                                                : "rgba(255,255,255,0.18)",
+                                        fontWeight: isCurrent ? 600 : 400,
+                                        whiteSpace: "nowrap",
+                                        overflow: "hidden",
+                                        textOverflow: "ellipsis",
+                                        transition: "color 0.3s ease",
+                                    }}>
+                                        {p.anchor}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                ))}
             </div>
-            {SPEECH_DATA.phases.map((phase, pi) => (
-                <div key={phase.id} style={{ marginBottom: "8px" }}>
+            <button
+                onClick={onTogglePractice}
+                style={{
+                    padding: "14px 16px",
+                    borderTop: "1px solid rgba(255,255,255,0.06)",
+                    border: "none",
+                    borderTop: "1px solid rgba(255,255,255,0.06)",
+                    background: practiceMode ? "rgba(129,140,248,0.1)" : "transparent",
+                    color: practiceMode ? "#818cf8" : "rgba(255,255,255,0.3)",
+                    fontSize: "10px",
+                    fontFamily: "'JetBrains Mono', monospace",
+                    letterSpacing: "2px",
+                    textTransform: "uppercase",
+                    cursor: "pointer",
+                    transition: "all 0.2s ease",
+                    textAlign: "left",
+                }}
+            >
+                ⏱ Practice
+            </button>
+        </div>
+    );
+}
+
+const PRACTICE_STAGES = [
+    { label: "Introduction", duration: 60 },
+    { label: "Extract A", duration: 120 },
+    { label: "Whole Work A", duration: 120 },
+    { label: "Extract B", duration: 120 },
+    { label: "Whole Work B", duration: 120 },
+    { label: "Conclusion", duration: 60 },
+];
+
+function PracticeTimer() {
+    const [stageIndex, setStageIndex] = useState(0);
+    const [timeLeft, setTimeLeft] = useState(PRACTICE_STAGES[0].duration);
+    const [running, setRunning] = useState(false);
+    const [finished, setFinished] = useState(false);
+
+    useEffect(() => {
+        if (!running) return;
+        const id = setInterval(() => {
+            setTimeLeft(prev => {
+                if (prev <= 1) {
+                    // Move to next stage
+                    setStageIndex(si => {
+                        const next = si + 1;
+                        if (next >= PRACTICE_STAGES.length) {
+                            setRunning(false);
+                            setFinished(true);
+                            clearInterval(id);
+                            return si;
+                        }
+                        setTimeLeft(PRACTICE_STAGES[next].duration);
+                        return next;
+                    });
+                    return prev;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+        return () => clearInterval(id);
+    }, [running]);
+
+    const reset = () => {
+        setStageIndex(0);
+        setTimeLeft(PRACTICE_STAGES[0].duration);
+        setRunning(false);
+        setFinished(false);
+    };
+
+    const stage = PRACTICE_STAGES[stageIndex];
+    const progress = 1 - timeLeft / stage.duration;
+    const totalTime = PRACTICE_STAGES.reduce((a, s) => a + s.duration, 0);
+    const elapsed = PRACTICE_STAGES.slice(0, stageIndex).reduce((a, s) => a + s.duration, 0) + (stage.duration - timeLeft);
+    const totalProgress = elapsed / totalTime;
+
+    const mins = Math.floor(timeLeft / 60);
+    const secs = timeLeft % 60;
+
+    const ringSize = 220;
+    const strokeWidth = 6;
+    const radius = (ringSize - strokeWidth) / 2;
+    const circumference = 2 * Math.PI * radius;
+    const dashOffset = circumference * (1 - progress);
+
+    return (
+        <div style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            flex: 1,
+            gap: "40px",
+            animation: "fadeIn 0.3s ease",
+        }}>
+            {/* Stage labels */}
+            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", justifyContent: "center" }}>
+                {PRACTICE_STAGES.map((s, i) => (
+                    <div key={i} style={{
+                        padding: "4px 10px",
+                        borderRadius: "6px",
+                        fontSize: "10px",
+                        fontFamily: "'JetBrains Mono', monospace",
+                        letterSpacing: "0.5px",
+                        background: i === stageIndex ? "rgba(129,140,248,0.15)" : i < stageIndex ? "rgba(129,140,248,0.05)" : "rgba(255,255,255,0.03)",
+                        color: i === stageIndex ? "#818cf8" : i < stageIndex ? "rgba(129,140,248,0.4)" : "rgba(255,255,255,0.15)",
+                        border: `1px solid ${i === stageIndex ? "rgba(129,140,248,0.3)" : "rgba(255,255,255,0.05)"}`,
+                        transition: "all 0.3s ease",
+                    }}>
+                        {s.label}
+                    </div>
+                ))}
+            </div>
+
+            {/* Circular timer */}
+            <div style={{ position: "relative", width: ringSize, height: ringSize }}>
+                <svg width={ringSize} height={ringSize} style={{ transform: "rotate(-90deg)" }}>
+                    <circle cx={ringSize / 2} cy={ringSize / 2} r={radius}
+                        fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth={strokeWidth} />
+                    <circle cx={ringSize / 2} cy={ringSize / 2} r={radius}
+                        fill="none" stroke="#818cf8" strokeWidth={strokeWidth}
+                        strokeLinecap="round"
+                        strokeDasharray={circumference}
+                        strokeDashoffset={dashOffset}
+                        style={{ transition: "stroke-dashoffset 0.5s ease" }} />
+                </svg>
+                <div style={{
+                    position: "absolute",
+                    inset: 0,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "6px",
+                }}>
                     <div style={{
-                        fontSize: "8px",
+                        fontSize: "48px",
+                        fontWeight: 300,
+                        fontFamily: "'JetBrains Mono', monospace",
+                        color: finished ? "rgba(129,140,248,0.6)" : "rgba(255,255,255,0.9)",
+                        letterSpacing: "2px",
+                    }}>
+                        {finished ? "✓" : `${mins}:${secs.toString().padStart(2, '0')}`}
+                    </div>
+                    <div style={{
+                        fontSize: "10px",
                         letterSpacing: "2px",
                         textTransform: "uppercase",
-                        color: pi === currentPhaseIndex ? "rgba(230,180,110,0.7)" : "rgba(255,255,255,0.15)",
-                        marginBottom: "4px",
-                        paddingLeft: "4px",
-                        transition: "color 0.3s ease",
+                        color: "rgba(129,140,248,0.6)",
                     }}>
-                        {phase.shortTitle}
+                        {finished ? "Complete" : stage.label}
                     </div>
-                    {phase.paragraphs.map((p, idx) => {
-                        let globalIdx = 0;
-                        for (let i = 0; i < pi; i++) globalIdx += SPEECH_DATA.phases[i].paragraphs.length;
-                        globalIdx += idx;
-                        const isCurrent = globalIdx === globalCurrent;
-                        const isPast = globalIdx < globalCurrent;
-
-                        return (
-                            <div
-                                key={idx}
-                                onClick={() => onNavigate(pi, idx)}
-                                style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "8px",
-                                    padding: "5px 4px",
-                                    borderRadius: "4px",
-                                    background: isCurrent ? "rgba(230,180,110,0.1)" : "transparent",
-                                    cursor: "pointer",
-                                    transition: "all 0.3s ease",
-                                }}
-                            >
-                                <div style={{
-                                    width: "5px",
-                                    height: "5px",
-                                    borderRadius: "50%",
-                                    flexShrink: 0,
-                                    background: isCurrent
-                                        ? "#e6b46e"
-                                        : isPast
-                                            ? "rgba(230,180,110,0.3)"
-                                            : "rgba(255,255,255,0.1)",
-                                    boxShadow: isCurrent ? "0 0 8px rgba(230,180,110,0.4)" : "none",
-                                    transition: "all 0.3s ease",
-                                }} />
-                                <div style={{
-                                    fontSize: "11px",
-                                    color: isCurrent
-                                        ? "#e6b46e"
-                                        : isPast
-                                            ? "rgba(255,255,255,0.3)"
-                                            : "rgba(255,255,255,0.18)",
-                                    fontWeight: isCurrent ? 600 : 400,
-                                    whiteSpace: "nowrap",
-                                    overflow: "hidden",
-                                    textOverflow: "ellipsis",
-                                    transition: "color 0.3s ease",
-                                }}>
-                                    {p.anchor}
-                                </div>
-                            </div>
-                        );
-                    })}
                 </div>
-            ))}
+            </div>
+
+            {/* Controls */}
+            <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                <button onClick={() => { if (finished) { reset(); } else { setRunning(!running); } }} style={{
+                    padding: "10px 28px",
+                    borderRadius: "8px",
+                    border: "1px solid rgba(129,140,248,0.3)",
+                    background: running ? "rgba(129,140,248,0.08)" : "rgba(129,140,248,0.15)",
+                    color: "#818cf8",
+                    fontSize: "12px",
+                    fontFamily: "'JetBrains Mono', monospace",
+                    cursor: "pointer",
+                    transition: "all 0.2s ease",
+                    letterSpacing: "1px",
+                }}>
+                    {finished ? "Restart" : running ? "Pause" : "Start"}
+                </button>
+                {!finished && (
+                    <button onClick={reset} style={{
+                        padding: "10px 20px",
+                        borderRadius: "8px",
+                        border: "1px solid rgba(255,255,255,0.08)",
+                        background: "transparent",
+                        color: "rgba(255,255,255,0.3)",
+                        fontSize: "12px",
+                        fontFamily: "'JetBrains Mono', monospace",
+                        cursor: "pointer",
+                        transition: "all 0.2s ease",
+                    }}>
+                        Reset
+                    </button>
+                )}
+            </div>
+
+            {/* Overall progress bar */}
+            <div style={{ width: "320px" }}>
+                <div style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    marginBottom: "6px",
+                    fontSize: "9px",
+                    letterSpacing: "1.5px",
+                    textTransform: "uppercase",
+                    color: "rgba(255,255,255,0.2)",
+                }}>
+                    <span>Overall</span>
+                    <span>{Math.round(totalProgress * 100)}%</span>
+                </div>
+                <div style={{
+                    height: "3px",
+                    borderRadius: "2px",
+                    background: "rgba(255,255,255,0.06)",
+                    overflow: "hidden",
+                }}>
+                    <div style={{
+                        height: "100%",
+                        borderRadius: "2px",
+                        background: "#818cf8",
+                        width: `${totalProgress * 100}%`,
+                        transition: "width 0.5s ease",
+                    }} />
+                </div>
+                <div style={{
+                    textAlign: "center",
+                    marginTop: "8px",
+                    fontSize: "11px",
+                    color: "rgba(255,255,255,0.15)",
+                }}>
+                    {Math.floor(elapsed / 60)}:{(elapsed % 60).toString().padStart(2, '0')} / {Math.floor(totalTime / 60)}:{(totalTime % 60).toString().padStart(2, '0')}
+                </div>
+            </div>
         </div>
     );
 }
@@ -606,6 +838,7 @@ export default function IOMemorizer() {
     const [mode, setMode] = useState(1);
     const [overrides, setOverrides] = useState(() => loadOverrides());
     const [revealedMap, setRevealedMap] = useState({});
+    const [practiceMode, setPracticeMode] = useState(false);
 
     const phase = SPEECH_DATA.phases[phaseIndex];
     const origPara = phase.paragraphs[paraIndex];
@@ -676,372 +909,391 @@ export default function IOMemorizer() {
         }}>
             <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet" />
 
-            <SideMap currentPhaseIndex={phaseIndex} currentParaIndex={paraIndex} onNavigate={(pi, idx) => { setPhaseIndex(pi); setParaIndex(idx); }} />
+            <SideMap
+                currentPhaseIndex={phaseIndex}
+                currentParaIndex={paraIndex}
+                onNavigate={(pi, idx) => { setPhaseIndex(pi); setParaIndex(idx); setPracticeMode(false); }}
+                practiceMode={practiceMode}
+                onTogglePractice={() => setPracticeMode(p => !p)}
+            />
 
-            <div style={{
-                flex: 1,
-                display: "flex",
-                flexDirection: "column",
-                overflow: "hidden",
-            }}>
-                {/* Header */}
-                <div style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    padding: "16px 32px",
-                    borderBottom: "1px solid rgba(255,255,255,0.06)",
-                }}>
-                    {/* Phase tabs */}
-                    <div style={{ display: "flex", gap: "4px" }}>
-                        {SPEECH_DATA.phases.map((p, i) => (
-                            <button
-                                key={p.id}
-                                onClick={() => { setPhaseIndex(i); setParaIndex(0); }}
-                                style={{
-                                    padding: "6px 14px",
-                                    borderRadius: "6px",
-                                    border: "none",
-                                    background: i === phaseIndex ? "rgba(230,180,110,0.12)" : "transparent",
-                                    color: i === phaseIndex ? "#e6b46e" : "rgba(255,255,255,0.3)",
-                                    fontSize: "11px",
-                                    fontFamily: "'JetBrains Mono', monospace",
-                                    fontWeight: i === phaseIndex ? 600 : 400,
-                                    cursor: "pointer",
-                                    letterSpacing: "0.5px",
-                                    transition: "all 0.2s ease",
-                                }}
-                            >
-                                {p.shortTitle}
-                            </button>
-                        ))}
-                    </div>
-
-                    {/* Mode selector */}
-                    <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
-                        {modeLabels.map((label, i) => (
-                            <button
-                                key={label}
-                                onClick={() => setMode(i + 1)}
-                                style={{
-                                    padding: "6px 14px",
-                                    borderRadius: "6px",
-                                    border: `1px solid ${mode === i + 1 ? modeColors[i] + "40" : "rgba(255,255,255,0.06)"}`,
-                                    background: mode === i + 1 ? modeColors[i] + "15" : "transparent",
-                                    color: mode === i + 1 ? modeColors[i] : "rgba(255,255,255,0.3)",
-                                    fontSize: "11px",
-                                    fontFamily: "'JetBrains Mono', monospace",
-                                    fontWeight: mode === i + 1 ? 600 : 400,
-                                    cursor: "pointer",
-                                    transition: "all 0.2s ease",
-                                }}
-                            >
-                                {i + 1} {label}
-                            </button>
-                        ))}
-
-                        <div style={{ width: "1px", height: "20px", background: "rgba(255,255,255,0.08)", margin: "0 8px" }} />
-
-                        <button
-                            onClick={() => {
-                                const exportData = {
-                                    overrides,
-                                    exportedAt: new Date().toISOString(),
-                                };
-                                const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
-                                const url = URL.createObjectURL(blob);
-                                const a = document.createElement("a");
-                                a.href = url;
-                                a.download = "memorizer-backup.json";
-                                a.click();
-                                URL.revokeObjectURL(url);
-                            }}
-                            style={{
-                                padding: "6px 10px",
-                                borderRadius: "6px",
-                                border: "1px solid rgba(255,255,255,0.08)",
-                                background: "transparent",
-                                color: "rgba(255,255,255,0.3)",
-                                fontSize: "11px",
-                                fontFamily: "'JetBrains Mono', monospace",
-                                cursor: "pointer",
-                                transition: "all 0.2s ease",
-                            }}
-                            title="Export all data as JSON"
-                        >
-                            ↓ Export
-                        </button>
-
-                        <button
-                            onClick={() => {
-                                const input = document.createElement("input");
-                                input.type = "file";
-                                input.accept = ".json";
-                                input.onchange = (e) => {
-                                    const file = e.target.files[0];
-                                    if (!file) return;
-                                    const reader = new FileReader();
-                                    reader.onload = (ev) => {
-                                        try {
-                                            const data = JSON.parse(ev.target.result);
-                                            if (data.overrides) {
-                                                setOverrides(data.overrides);
-                                                saveOverrides(data.overrides);
-                                                alert("Import successful!");
-                                            } else {
-                                                alert("Invalid file: no overrides found.");
-                                            }
-                                        } catch {
-                                            alert("Failed to parse JSON file.");
-                                        }
-                                    };
-                                    reader.readAsText(file);
-                                };
-                                input.click();
-                            }}
-                            style={{
-                                padding: "6px 10px",
-                                borderRadius: "6px",
-                                border: "1px solid rgba(255,255,255,0.08)",
-                                background: "transparent",
-                                color: "rgba(255,255,255,0.3)",
-                                fontSize: "11px",
-                                fontFamily: "'JetBrains Mono', monospace",
-                                cursor: "pointer",
-                                transition: "all 0.2s ease",
-                            }}
-                            title="Import JSON backup"
-                        >
-                            ↑ Import
-                        </button>
-                    </div>
-                </div>
-
-                {/* Paragraph nav dots */}
-                <div style={{
-                    display: "flex",
-                    justifyContent: "center",
-                    gap: "8px",
-                    padding: "16px",
-                }}>
-                    {phase.paragraphs.map((_, i) => (
-                        <button
-                            key={i}
-                            onClick={() => { setParaIndex(i); }}
-                            style={{
-                                width: i === paraIndex ? "28px" : "8px",
-                                height: "8px",
-                                borderRadius: "4px",
-                                border: "none",
-                                background: i === paraIndex ? "#e6b46e" : "rgba(255,255,255,0.1)",
-                                cursor: "pointer",
-                                transition: "all 0.3s ease",
-                                padding: 0,
-                            }}
-                        />
-                    ))}
-                </div>
-
-                {/* Main content area */}
+            {practiceMode ? (
                 <div style={{
                     flex: 1,
                     display: "flex",
-                    alignItems: mode === 3 ? "flex-start" : "center",
+                    flexDirection: "column",
+                    overflow: "hidden",
+                    alignItems: "center",
                     justifyContent: "center",
-                    padding: mode === 3 ? "24px 48px 48px" : "48px",
-                    overflowY: "auto",
                 }}>
+                    <PracticeTimer />
+                </div>
+            ) : (
+                <div style={{
+                    flex: 1,
+                    display: "flex",
+                    flexDirection: "column",
+                    overflow: "hidden",
+                }}>
+                    {/* Header */}
                     <div style={{
-                        maxWidth: "720px",
-                        width: "100%",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: "16px 32px",
+                        borderBottom: "1px solid rgba(255,255,255,0.06)",
                     }}>
-                        {mode === 1 && (
-                            <div style={{
-                                display: "flex",
-                                flexDirection: "column",
-                                alignItems: "center",
-                                gap: "16px",
-                                animation: "fadeIn 0.3s ease",
-                            }}>
-                                <div style={{
-                                    fontSize: "9px",
-                                    letterSpacing: "3px",
-                                    textTransform: "uppercase",
-                                    color: "rgba(230,180,110,0.4)",
-                                }}>
-                                    Anchor
-                                </div>
-                                <div style={{
-                                    padding: "48px 56px",
-                                    borderRadius: "16px",
-                                    background: "linear-gradient(135deg, rgba(230,180,110,0.08) 0%, rgba(230,180,110,0.03) 100%)",
-                                    border: "1px solid rgba(230,180,110,0.12)",
-                                    textAlign: "center",
-                                    boxShadow: "0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(230,180,110,0.06)",
-                                }}>
-                                    <EditableText
-                                        value={para.anchor}
-                                        onSave={(v) => saveField("anchor", v)}
-                                        style={{
-                                            fontSize: "36px",
-                                            fontWeight: 700,
-                                            color: "#e6b46e",
-                                            letterSpacing: "2px",
-                                            fontFamily: "'JetBrains Mono', monospace",
-                                            textShadow: "0 0 40px rgba(230,180,110,0.2)",
-                                        }}
-                                    />
-                                </div>
-                                <div style={{
-                                    fontSize: "12px",
-                                    color: "rgba(255,255,255,0.2)",
-                                    marginTop: "8px",
-                                }}>
-                                    Press <span style={{ color: "rgba(139,184,224,0.6)", fontWeight: 600 }}>2</span> for argument · <span style={{ color: "rgba(129,140,248,0.6)", fontWeight: 600 }}>3</span> for polished
-                                </div>
-                            </div>
-                        )}
+                        {/* Phase tabs */}
+                        <div style={{ display: "flex", gap: "4px" }}>
+                            {SPEECH_DATA.phases.map((p, i) => (
+                                <button
+                                    key={p.id}
+                                    onClick={() => { setPhaseIndex(i); setParaIndex(0); }}
+                                    style={{
+                                        padding: "6px 14px",
+                                        borderRadius: "6px",
+                                        border: "none",
+                                        background: i === phaseIndex ? "rgba(230,180,110,0.12)" : "transparent",
+                                        color: i === phaseIndex ? "#e6b46e" : "rgba(255,255,255,0.3)",
+                                        fontSize: "11px",
+                                        fontFamily: "'JetBrains Mono', monospace",
+                                        fontWeight: i === phaseIndex ? 600 : 400,
+                                        cursor: "pointer",
+                                        letterSpacing: "0.5px",
+                                        transition: "all 0.2s ease",
+                                    }}
+                                >
+                                    {p.shortTitle}
+                                </button>
+                            ))}
+                        </div>
 
-                        {mode === 2 && (
-                            <div style={{
-                                display: "flex",
-                                flexDirection: "column",
-                                alignItems: "center",
-                                gap: "16px",
-                                animation: "fadeIn 0.3s ease",
-                            }}>
-                                <div style={{
-                                    fontSize: "9px",
-                                    letterSpacing: "3px",
-                                    textTransform: "uppercase",
-                                    color: "rgba(139,184,224,0.4)",
-                                }}>
-                                    Blunt Argument
-                                </div>
-                                <div style={{
-                                    fontSize: "13px",
-                                    color: "rgba(230,180,110,0.5)",
-                                    fontWeight: 600,
-                                    letterSpacing: "1px",
-                                    marginBottom: "4px",
-                                }}>
-                                    {para.anchor}
-                                </div>
-                                <div style={{
-                                    padding: "40px 48px",
-                                    borderRadius: "16px",
-                                    background: "linear-gradient(135deg, rgba(139,184,224,0.06) 0%, rgba(139,184,224,0.02) 100%)",
-                                    border: "1px solid rgba(139,184,224,0.1)",
-                                    boxShadow: "0 8px 32px rgba(0,0,0,0.3)",
-                                }}>
-                                    <EditableText
-                                        value={para.blunt}
-                                        onSave={(v) => saveField("blunt", v)}
-                                        style={{
-                                            fontSize: "20px",
-                                            lineHeight: "1.7",
-                                            color: "rgba(255,255,255,0.85)",
-                                            fontFamily: "'Inter', sans-serif",
-                                            textAlign: "center",
-                                        }}
-                                    />
-                                </div>
-                                <div style={{
-                                    fontSize: "12px",
-                                    color: "rgba(255,255,255,0.2)",
-                                    marginTop: "8px",
-                                }}>
-                                    Press <span style={{ color: "rgba(230,180,110,0.6)", fontWeight: 600 }}>1</span> for anchor · <span style={{ color: "rgba(129,140,248,0.6)", fontWeight: 600 }}>3</span> for polished
-                                </div>
-                            </div>
-                        )}
+                        {/* Mode selector */}
+                        <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+                            {modeLabels.map((label, i) => (
+                                <button
+                                    key={label}
+                                    onClick={() => setMode(i + 1)}
+                                    style={{
+                                        padding: "6px 14px",
+                                        borderRadius: "6px",
+                                        border: `1px solid ${mode === i + 1 ? modeColors[i] + "40" : "rgba(255,255,255,0.06)"}`,
+                                        background: mode === i + 1 ? modeColors[i] + "15" : "transparent",
+                                        color: mode === i + 1 ? modeColors[i] : "rgba(255,255,255,0.3)",
+                                        fontSize: "11px",
+                                        fontFamily: "'JetBrains Mono', monospace",
+                                        fontWeight: mode === i + 1 ? 600 : 400,
+                                        cursor: "pointer",
+                                        transition: "all 0.2s ease",
+                                    }}
+                                >
+                                    {i + 1} {label}
+                                </button>
+                            ))}
 
-                        {mode === 3 && (
-                            <div style={{ animation: "fadeIn 0.3s ease" }}>
+                            <div style={{ width: "1px", height: "20px", background: "rgba(255,255,255,0.08)", margin: "0 8px" }} />
+
+                            <button
+                                onClick={() => {
+                                    const exportData = {
+                                        overrides,
+                                        exportedAt: new Date().toISOString(),
+                                    };
+                                    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+                                    const url = URL.createObjectURL(blob);
+                                    const a = document.createElement("a");
+                                    a.href = url;
+                                    a.download = "memorizer-backup.json";
+                                    a.click();
+                                    URL.revokeObjectURL(url);
+                                }}
+                                style={{
+                                    padding: "6px 10px",
+                                    borderRadius: "6px",
+                                    border: "1px solid rgba(255,255,255,0.08)",
+                                    background: "transparent",
+                                    color: "rgba(255,255,255,0.3)",
+                                    fontSize: "11px",
+                                    fontFamily: "'JetBrains Mono', monospace",
+                                    cursor: "pointer",
+                                    transition: "all 0.2s ease",
+                                }}
+                                title="Export all data as JSON"
+                            >
+                                ↓ Export
+                            </button>
+
+                            <button
+                                onClick={() => {
+                                    const input = document.createElement("input");
+                                    input.type = "file";
+                                    input.accept = ".json";
+                                    input.onchange = (e) => {
+                                        const file = e.target.files[0];
+                                        if (!file) return;
+                                        const reader = new FileReader();
+                                        reader.onload = (ev) => {
+                                            try {
+                                                const data = JSON.parse(ev.target.result);
+                                                if (data.overrides) {
+                                                    setOverrides(data.overrides);
+                                                    saveOverrides(data.overrides);
+                                                    alert("Import successful!");
+                                                } else {
+                                                    alert("Invalid file: no overrides found.");
+                                                }
+                                            } catch {
+                                                alert("Failed to parse JSON file.");
+                                            }
+                                        };
+                                        reader.readAsText(file);
+                                    };
+                                    input.click();
+                                }}
+                                style={{
+                                    padding: "6px 10px",
+                                    borderRadius: "6px",
+                                    border: "1px solid rgba(255,255,255,0.08)",
+                                    background: "transparent",
+                                    color: "rgba(255,255,255,0.3)",
+                                    fontSize: "11px",
+                                    fontFamily: "'JetBrains Mono', monospace",
+                                    cursor: "pointer",
+                                    transition: "all 0.2s ease",
+                                }}
+                                title="Import JSON backup"
+                            >
+                                ↑ Import
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Paragraph nav dots */}
+                    <div style={{
+                        display: "flex",
+                        justifyContent: "center",
+                        gap: "8px",
+                        padding: "16px",
+                    }}>
+                        {phase.paragraphs.map((_, i) => (
+                            <button
+                                key={i}
+                                onClick={() => { setParaIndex(i); }}
+                                style={{
+                                    width: i === paraIndex ? "28px" : "8px",
+                                    height: "8px",
+                                    borderRadius: "4px",
+                                    border: "none",
+                                    background: i === paraIndex ? "#e6b46e" : "rgba(255,255,255,0.1)",
+                                    cursor: "pointer",
+                                    transition: "all 0.3s ease",
+                                    padding: 0,
+                                }}
+                            />
+                        ))}
+                    </div>
+
+                    {/* Main content area */}
+                    <div style={{
+                        flex: 1,
+                        display: "flex",
+                        alignItems: mode === 3 ? "flex-start" : "center",
+                        justifyContent: "center",
+                        padding: mode === 3 ? "24px 48px 48px" : "48px",
+                        overflowY: "auto",
+                    }}>
+                        <div style={{
+                            maxWidth: "720px",
+                            width: "100%",
+                        }}>
+                            {mode === 1 && (
                                 <div style={{
                                     display: "flex",
+                                    flexDirection: "column",
                                     alignItems: "center",
-                                    gap: "12px",
-                                    marginBottom: "8px",
+                                    gap: "16px",
+                                    animation: "fadeIn 0.3s ease",
                                 }}>
-                                    <EditableText
-                                        value={para.anchor}
-                                        onSave={(v) => saveField("anchor", v)}
-                                        style={{
-                                            fontSize: "14px",
-                                            color: "#e6b46e",
-                                            fontWeight: 600,
-                                            letterSpacing: "1px",
-                                            fontFamily: "'JetBrains Mono', monospace",
-                                        }}
+                                    <div style={{
+                                        fontSize: "9px",
+                                        letterSpacing: "3px",
+                                        textTransform: "uppercase",
+                                        color: "rgba(230,180,110,0.4)",
+                                    }}>
+                                        Anchor
+                                    </div>
+                                    <div style={{
+                                        padding: "48px 56px",
+                                        borderRadius: "16px",
+                                        background: "linear-gradient(135deg, rgba(230,180,110,0.08) 0%, rgba(230,180,110,0.03) 100%)",
+                                        border: "1px solid rgba(230,180,110,0.12)",
+                                        textAlign: "center",
+                                        boxShadow: "0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(230,180,110,0.06)",
+                                    }}>
+                                        <EditableText
+                                            value={para.anchor}
+                                            onSave={(v) => saveField("anchor", v)}
+                                            style={{
+                                                fontSize: "36px",
+                                                fontWeight: 700,
+                                                color: "#e6b46e",
+                                                letterSpacing: "2px",
+                                                fontFamily: "'JetBrains Mono', monospace",
+                                                textShadow: "0 0 40px rgba(230,180,110,0.2)",
+                                            }}
+                                        />
+                                    </div>
+                                    <div style={{
+                                        fontSize: "12px",
+                                        color: "rgba(255,255,255,0.2)",
+                                        marginTop: "8px",
+                                    }}>
+                                        Press <span style={{ color: "rgba(139,184,224,0.6)", fontWeight: 600 }}>2</span> for argument · <span style={{ color: "rgba(129,140,248,0.6)", fontWeight: 600 }}>3</span> for polished
+                                    </div>
+                                </div>
+                            )}
+
+                            {mode === 2 && (
+                                <div style={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    alignItems: "center",
+                                    gap: "16px",
+                                    animation: "fadeIn 0.3s ease",
+                                }}>
+                                    <div style={{
+                                        fontSize: "9px",
+                                        letterSpacing: "3px",
+                                        textTransform: "uppercase",
+                                        color: "rgba(139,184,224,0.4)",
+                                    }}>
+                                        Blunt Argument
+                                    </div>
+                                    <div style={{
+                                        fontSize: "13px",
+                                        color: "rgba(230,180,110,0.5)",
+                                        fontWeight: 600,
+                                        letterSpacing: "1px",
+                                        marginBottom: "4px",
+                                    }}>
+                                        {para.anchor}
+                                    </div>
+                                    <div style={{
+                                        padding: "40px 48px",
+                                        borderRadius: "16px",
+                                        background: "linear-gradient(135deg, rgba(139,184,224,0.06) 0%, rgba(139,184,224,0.02) 100%)",
+                                        border: "1px solid rgba(139,184,224,0.1)",
+                                        boxShadow: "0 8px 32px rgba(0,0,0,0.3)",
+                                    }}>
+                                        <EditableText
+                                            value={para.blunt}
+                                            onSave={(v) => saveField("blunt", v)}
+                                            style={{
+                                                fontSize: "20px",
+                                                lineHeight: "1.7",
+                                                color: "rgba(255,255,255,0.85)",
+                                                fontFamily: "'Inter', sans-serif",
+                                                textAlign: "center",
+                                            }}
+                                        />
+                                    </div>
+                                    <div style={{
+                                        fontSize: "12px",
+                                        color: "rgba(255,255,255,0.2)",
+                                        marginTop: "8px",
+                                    }}>
+                                        Press <span style={{ color: "rgba(230,180,110,0.6)", fontWeight: 600 }}>1</span> for anchor · <span style={{ color: "rgba(129,140,248,0.6)", fontWeight: 600 }}>3</span> for polished
+                                    </div>
+                                </div>
+                            )}
+
+                            {mode === 3 && (
+                                <div style={{ animation: "fadeIn 0.3s ease" }}>
+                                    <div style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "12px",
+                                        marginBottom: "8px",
+                                    }}>
+                                        <EditableText
+                                            value={para.anchor}
+                                            onSave={(v) => saveField("anchor", v)}
+                                            style={{
+                                                fontSize: "14px",
+                                                color: "#e6b46e",
+                                                fontWeight: 600,
+                                                letterSpacing: "1px",
+                                                fontFamily: "'JetBrains Mono', monospace",
+                                            }}
+                                        />
+                                    </div>
+                                    <PolishedView
+                                        sentences={para.polished}
+                                        onSaveSentence={(i, v) => saveField(`polished_${i}`, v)}
+                                        revealed={revealedMap[`${phase.id}_${paraIndex}`] || {}}
+                                        setRevealed={(r) => setRevealedMap(prev => ({
+                                            ...prev,
+                                            [`${phase.id}_${paraIndex}`]: typeof r === 'function' ? r(prev[`${phase.id}_${paraIndex}`] || {}) : r,
+                                        }))}
                                     />
                                 </div>
-                                <PolishedView
-                                    sentences={para.polished}
-                                    onSaveSentence={(i, v) => saveField(`polished_${i}`, v)}
-                                    revealed={revealedMap[`${phase.id}_${paraIndex}`] || {}}
-                                    setRevealed={(r) => setRevealedMap(prev => ({
-                                        ...prev,
-                                        [`${phase.id}_${paraIndex}`]: typeof r === 'function' ? r(prev[`${phase.id}_${paraIndex}`] || {}) : r,
-                                    }))}
-                                />
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
-                </div>
 
-                {/* Footer nav */}
-                <div style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    padding: "16px 32px",
-                    borderTop: "1px solid rgba(255,255,255,0.06)",
-                }}>
-                    <button
-                        onClick={goPrev}
-                        disabled={phaseIndex === 0 && paraIndex === 0}
-                        style={{
-                            padding: "8px 20px",
-                            borderRadius: "8px",
-                            border: "1px solid rgba(255,255,255,0.08)",
-                            background: "transparent",
-                            color: (phaseIndex === 0 && paraIndex === 0) ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.4)",
-                            fontSize: "12px",
-                            fontFamily: "'JetBrains Mono', monospace",
-                            cursor: (phaseIndex === 0 && paraIndex === 0) ? "default" : "pointer",
-                            transition: "all 0.2s ease",
-                        }}
-                    >
-                        ← Prev
-                    </button>
-
+                    {/* Footer nav */}
                     <div style={{
-                        fontSize: "11px",
-                        color: "rgba(255,255,255,0.2)",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: "16px 32px",
+                        borderTop: "1px solid rgba(255,255,255,0.06)",
                     }}>
-                        {phase.title} · {paraIndex + 1} / {phase.paragraphs.length}
-                    </div>
+                        <button
+                            onClick={goPrev}
+                            disabled={phaseIndex === 0 && paraIndex === 0}
+                            style={{
+                                padding: "8px 20px",
+                                borderRadius: "8px",
+                                border: "1px solid rgba(255,255,255,0.08)",
+                                background: "transparent",
+                                color: (phaseIndex === 0 && paraIndex === 0) ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.4)",
+                                fontSize: "12px",
+                                fontFamily: "'JetBrains Mono', monospace",
+                                cursor: (phaseIndex === 0 && paraIndex === 0) ? "default" : "pointer",
+                                transition: "all 0.2s ease",
+                            }}
+                        >
+                            ← Prev
+                        </button>
 
-                    <button
-                        onClick={goNext}
-                        disabled={phaseIndex === SPEECH_DATA.phases.length - 1 && paraIndex === phase.paragraphs.length - 1}
-                        style={{
-                            padding: "8px 20px",
-                            borderRadius: "8px",
-                            border: "1px solid rgba(255,255,255,0.08)",
-                            background: "transparent",
-                            color: (phaseIndex === SPEECH_DATA.phases.length - 1 && paraIndex === phase.paragraphs.length - 1) ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.4)",
-                            fontSize: "12px",
-                            fontFamily: "'JetBrains Mono', monospace",
-                            cursor: (phaseIndex === SPEECH_DATA.phases.length - 1 && paraIndex === phase.paragraphs.length - 1) ? "default" : "pointer",
-                            transition: "all 0.2s ease",
-                        }}
-                    >
-                        Next →
-                    </button>
+                        <div style={{
+                            fontSize: "11px",
+                            color: "rgba(255,255,255,0.2)",
+                        }}>
+                            {phase.title} · {paraIndex + 1} / {phase.paragraphs.length}
+                        </div>
+
+                        <button
+                            onClick={goNext}
+                            disabled={phaseIndex === SPEECH_DATA.phases.length - 1 && paraIndex === phase.paragraphs.length - 1}
+                            style={{
+                                padding: "8px 20px",
+                                borderRadius: "8px",
+                                border: "1px solid rgba(255,255,255,0.08)",
+                                background: "transparent",
+                                color: (phaseIndex === SPEECH_DATA.phases.length - 1 && paraIndex === phase.paragraphs.length - 1) ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.4)",
+                                fontSize: "12px",
+                                fontFamily: "'JetBrains Mono', monospace",
+                                cursor: (phaseIndex === SPEECH_DATA.phases.length - 1 && paraIndex === phase.paragraphs.length - 1) ? "default" : "pointer",
+                                transition: "all 0.2s ease",
+                            }}
+                        >
+                            Next →
+                        </button>
+                    </div>
                 </div>
-            </div>
+            )}
 
             <style>{`
         @keyframes fadeIn {
