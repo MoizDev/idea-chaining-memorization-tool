@@ -471,7 +471,12 @@ function PracticeTimer() {
             {/* Stage labels */}
             <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", justifyContent: "center" }}>
                 {PRACTICE_STAGES.map((s, i) => (
-                    <div key={i} style={{
+                    <div key={i} onClick={() => {
+                        setStageIndex(i);
+                        setTimeLeft(PRACTICE_STAGES[i].duration);
+                        setFinished(false);
+                        setRunning(true);
+                    }} style={{
                         padding: "4px 10px",
                         borderRadius: "6px",
                         fontSize: "10px",
@@ -480,6 +485,7 @@ function PracticeTimer() {
                         background: i === stageIndex ? "rgba(129,140,248,0.15)" : i < stageIndex ? "rgba(129,140,248,0.05)" : "rgba(255,255,255,0.03)",
                         color: i === stageIndex ? "#818cf8" : i < stageIndex ? "rgba(129,140,248,0.4)" : "rgba(255,255,255,0.15)",
                         border: `1px solid ${i === stageIndex ? "rgba(129,140,248,0.3)" : "rgba(255,255,255,0.05)"}`,
+                        cursor: "pointer",
                         transition: "all 0.3s ease",
                     }}>
                         {s.label}
