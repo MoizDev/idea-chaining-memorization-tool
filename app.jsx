@@ -716,7 +716,7 @@ function PolishedWord({ word, revealed }) {
     );
 }
 
-function PolishedView({ sentences, onSaveSentence, revealed, setRevealed }) {
+function PolishedView({ sentences, onSaveSentence, revealed, setRevealed, onRevealAllGlobal, onHideAllGlobal }) {
     const [editMode, setEditMode] = useState(false);
     const [drafts, setDrafts] = useState([]);
 
@@ -801,8 +801,8 @@ function PolishedView({ sentences, onSaveSentence, revealed, setRevealed }) {
                         letterSpacing: "0.5px",
                     }}>✎ Edit</button>
                     <button onClick={() => {
-                        if (allRevealed) setRevealed({});
-                        else { const all = {}; sentences.forEach((_, i) => { all[i] = true; }); setRevealed(all); }
+                        if (allRevealed) onHideAllGlobal();
+                        else onRevealAllGlobal();
                     }} style={{
                         padding: "4px 12px", borderRadius: "6px", border: "1px solid rgba(129,140,248,0.25)",
                         background: "rgba(129,140,248,0.08)", color: "rgba(129,140,248,0.7)", fontSize: "10px",
@@ -1241,6 +1241,19 @@ export default function IOMemorizer() {
                                             ...prev,
                                             [`${phase.id}_${paraIndex}`]: typeof r === 'function' ? r(prev[`${phase.id}_${paraIndex}`] || {}) : r,
                                         }))}
+                                        onRevealAllGlobal={() => {
+                                            const next = {};
+                                            SPEECH_DATA.phases.forEach(ph => {
+                                                ph.paragraphs.forEach((p, pi) => {
+                                                    const key = `${ph.id}_${pi}`;
+                                                    const all = {};
+                                                    p.polished.forEach((_, si) => { all[si] = true; });
+                                                    next[key] = all;
+                                                });
+                                            });
+                                            setRevealedMap(next);
+                                        }}
+                                        onHideAllGlobal={() => setRevealedMap({})}
                                     />
                                 </div>
                             )}
