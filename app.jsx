@@ -267,7 +267,7 @@ function RedactedSentence({ text }) {
     );
 }
 
-function SideMap({ currentPhaseIndex, currentParaIndex, onNavigate, practiceMode, onTogglePractice }) {
+function SideMap({ currentPhaseIndex, currentParaIndex, onNavigate, practiceMode, onTogglePractice, forgotMap }) {
     let globalCurrent = 0;
     for (let i = 0; i < currentPhaseIndex; i++) {
         globalCurrent += SPEECH_DATA.phases[i].paragraphs.length;
@@ -362,9 +362,31 @@ function SideMap({ currentPhaseIndex, currentParaIndex, onNavigate, practiceMode
                                         overflow: "hidden",
                                         textOverflow: "ellipsis",
                                         transition: "color 0.3s ease",
+                                        flex: 1,
                                     }}>
                                         {p.anchor}
                                     </div>
+                                    {(() => {
+                                        const key = `${phase.id}_${idx}`;
+                                        const forgotObj = forgotMap?.[key] || {};
+                                        const count = Object.keys(forgotObj).length;
+                                        if (count === 0) return null;
+                                        return (
+                                            <div style={{
+                                                minWidth: "16px",
+                                                height: "16px",
+                                                borderRadius: "8px",
+                                                background: "rgba(251,191,36,0.2)",
+                                                color: "#fbbf24",
+                                                fontSize: "9px",
+                                                fontWeight: 600,
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                flexShrink: 0,
+                                            }}>{count}</div>
+                                        );
+                                    })()}
                                 </div>
                             );
                         })}
@@ -910,10 +932,11 @@ function PolishedView({ sentences, onSaveSentence, revealed, setRevealed, onReve
                                 <span
                                     onClick={(e) => { e.stopPropagation(); resolveForgot(i); }}
                                     style={{
-                                        position: "relative",
-                                        display: "inline-block",
-                                        marginLeft: "4px",
-                                        padding: "2px 8px",
+                                        position: "absolute",
+                                        right: "-90px",
+                                        top: "50%",
+                                        transform: "translateY(-50%)",
+                                        padding: "3px 10px",
                                         borderRadius: "4px",
                                         background: "rgba(251,191,36,0.15)",
                                         border: "1px solid rgba(251,191,36,0.3)",
@@ -922,7 +945,7 @@ function PolishedView({ sentences, onSaveSentence, revealed, setRevealed, onReve
                                         fontFamily: "'JetBrains Mono', monospace",
                                         cursor: "pointer",
                                         whiteSpace: "nowrap",
-                                        verticalAlign: "middle",
+                                        zIndex: 50,
                                     }}
                                 >✓ Resolve</span>
                             )}
@@ -1054,6 +1077,7 @@ export default function IOMemorizer() {
                 onNavigate={(pi, idx) => { setPhaseIndex(pi); setParaIndex(idx); setPracticeMode(false); }}
                 practiceMode={practiceMode}
                 onTogglePractice={() => setPracticeMode(p => !p)}
+                forgotMap={forgotMap}
             />
 
             {practiceMode ? (
