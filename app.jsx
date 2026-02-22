@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 const SPEECH_DATA = {
     phases: [
@@ -722,7 +722,7 @@ function PolishedView({ sentences, onSaveSentence, revealed, setRevealed, onReve
     const [drafts, setDrafts] = useState([]);
     const [tooltip, setTooltip] = useState(null); // { sentenceIndex, x, y }
     const [hoveredForgot, setHoveredForgot] = useState(null);
-    const containerRef = React.useRef(null);
+    const containerRef = useRef(null);
 
     useEffect(() => {
         setEditMode(false);
