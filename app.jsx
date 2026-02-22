@@ -675,7 +675,7 @@ function EditableText({ value, onSave, style, displayStyle }) {
     );
 }
 
-function PolishedWord({ word, revealed }) {
+function PolishedWord({ word, revealed, forgot }) {
     if (word.length === 0) return null;
     let leading = '';
     let trailing = '';
@@ -685,15 +685,17 @@ function PolishedWord({ word, revealed }) {
     const trailMatch = core.match(/([^a-zA-Z0-9]*)$/);
     if (trailMatch && trailMatch[1]) { trailing = trailMatch[1]; core = core.slice(0, core.length - trailing.length); }
 
+    const revealedColor = forgot ? "#fbbf24" : "#818cf8";
+
     if (core.length === 0) {
-        return <span style={{ color: revealed ? "#818cf8" : "rgba(255,255,255,0.2)" }}>{word}</span>;
+        return <span style={{ color: revealed ? revealedColor : "rgba(255,255,255,0.2)" }}>{word}</span>;
     }
 
     const first = core[0];
     const rest = core.slice(1);
 
     if (revealed) {
-        return <span style={{ color: "#818cf8" }}>{leading}{core}{trailing}</span>;
+        return <span style={{ color: revealedColor }}>{leading}{core}{trailing}</span>;
     }
 
     return (
@@ -715,16 +717,75 @@ function PolishedWord({ word, revealed }) {
     );
 }
 
-function PolishedView({ sentences, onSaveSentence, revealed, setRevealed, onRevealAllGlobal, onHideAllGlobal }) {
+function PolishedView({ sentences, onSaveSentence, revealed, setRevealed, onRevealAllGlobal, onHideAllGlobal, forgot, setForgot }) {
     const [editMode, setEditMode] = useState(false);
     const [drafts, setDrafts] = useState([]);
+    const [tooltip, setTooltip] = useState(null); // { sentenceIndex, x, y }
+    const [hoveredForgot, setHoveredForgot] = useState(null);
+    const containerRef = React.useRef(null);
 
     useEffect(() => {
         setEditMode(false);
     }, [sentences]);
 
+    useEffect(() => {
+        const handleMouseUp = (e) => {
+            const sel = window.getSelection();
+            if (!sel || sel.isCollapsed || !sel.toString().trim()) {
+                // small delay so click handler fires first
+                setTimeout(() => setTooltip(null), 150);
+                return;
+            }
+            // Find which sentence span contains the selection
+            const anchor = sel.anchorNode;
+            if (!anchor || !containerRef.current?.contains(anchor)) {
+                setTooltip(null);
+                return;
+            }
+            // Walk up to find [data-sentence-index]
+            let node = anchor.nodeType === 3 ? anchor.parentElement : anchor;
+            let sentenceIndex = null;
+            while (node && node !== containerRef.current) {
+                if (node.dataset?.sentenceIndex !== undefined) {
+                    sentenceIndex = parseInt(node.dataset.sentenceIndex);
+                    break;
+                }
+                node = node.parentElement;
+            }
+            if (sentenceIndex === null || !revealed[sentenceIndex]) return;
+            if (forgot[sentenceIndex]) return; // already marked
+
+            const range = sel.getRangeAt(0);
+            const rect = range.getBoundingClientRect();
+            const containerRect = containerRef.current.getBoundingClientRect();
+            setTooltip({
+                sentenceIndex,
+                x: rect.left + rect.width / 2 - containerRect.left,
+                y: rect.top - containerRect.top - 8,
+            });
+        };
+
+        document.addEventListener("mouseup", handleMouseUp);
+        return () => document.removeEventListener("mouseup", handleMouseUp);
+    }, [revealed, forgot]);
+
     const toggle = (i) => {
         setRevealed((prev) => ({ ...prev, [i]: !prev[i] }));
+    };
+
+    const markForgot = (i) => {
+        setForgot(prev => ({ ...prev, [i]: true }));
+        setTooltip(null);
+        window.getSelection()?.removeAllRanges();
+    };
+
+    const resolveForgot = (i) => {
+        setForgot(prev => {
+            const next = { ...prev };
+            delete next[i];
+            return next;
+        });
+        setHoveredForgot(null);
     };
 
     const enterEditMode = () => {
@@ -740,6 +801,7 @@ function PolishedView({ sentences, onSaveSentence, revealed, setRevealed, onReve
     };
 
     const allRevealed = sentences.every((_, i) => revealed[i]);
+    const forgotCount = Object.keys(forgot).length;
 
     if (editMode) {
         return (
@@ -787,10 +849,21 @@ function PolishedView({ sentences, onSaveSentence, revealed, setRevealed, onReve
     }
 
     return (
-        <div>
+        <div ref={containerRef} style={{ position: "relative" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-                <div style={{ fontSize: "9px", letterSpacing: "2.5px", textTransform: "uppercase", color: "rgba(255,255,255,0.2)" }}>
-                    Click to reveal
+                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <div style={{ fontSize: "9px", letterSpacing: "2.5px", textTransform: "uppercase", color: "rgba(255,255,255,0.2)" }}>
+                        Click to reveal
+                    </div>
+                    {forgotCount > 0 && (
+                        <div style={{
+                            fontSize: "9px", letterSpacing: "1px",
+                            color: "rgba(251,191,36,0.6)",
+                            fontFamily: "'JetBrains Mono', monospace",
+                        }}>
+                            {forgotCount} forgot
+                        </div>
+                    )}
                 </div>
                 <div style={{ display: "flex", gap: "6px" }}>
                     <button onClick={enterEditMode} style={{
@@ -813,26 +886,79 @@ function PolishedView({ sentences, onSaveSentence, revealed, setRevealed, onReve
             <div style={{ fontSize: "18px", lineHeight: "2.4", fontFamily: "'Inter', sans-serif" }}>
                 {sentences.map((s, i) => {
                     const isRevealed = revealed[i];
+                    const isForgot = forgot[i];
                     const words = s.split(' ');
                     return (
                         <span
                             key={i}
+                            data-sentence-index={i}
                             onClick={() => toggle(i)}
+                            onMouseEnter={() => { if (isForgot) setHoveredForgot(i); }}
+                            onMouseLeave={() => { if (hoveredForgot === i) setHoveredForgot(null); }}
                             style={{
                                 cursor: "pointer",
+                                position: "relative",
                             }}
                         >
                             {words.map((word, wi) => (
                                 <span key={wi}>
                                     {wi > 0 && ' '}
-                                    <PolishedWord word={word} revealed={isRevealed} />
+                                    <PolishedWord word={word} revealed={isRevealed} forgot={isForgot} />
                                 </span>
                             ))}
+                            {isForgot && isRevealed && hoveredForgot === i && (
+                                <span
+                                    onClick={(e) => { e.stopPropagation(); resolveForgot(i); }}
+                                    style={{
+                                        position: "relative",
+                                        display: "inline-block",
+                                        marginLeft: "4px",
+                                        padding: "2px 8px",
+                                        borderRadius: "4px",
+                                        background: "rgba(251,191,36,0.15)",
+                                        border: "1px solid rgba(251,191,36,0.3)",
+                                        color: "rgba(251,191,36,0.9)",
+                                        fontSize: "10px",
+                                        fontFamily: "'JetBrains Mono', monospace",
+                                        cursor: "pointer",
+                                        whiteSpace: "nowrap",
+                                        verticalAlign: "middle",
+                                    }}
+                                >✓ Resolve</span>
+                            )}
                             {' '}
                         </span>
                     );
                 })}
             </div>
+
+            {/* Forgot tooltip */}
+            {tooltip && (
+                <div
+                    onClick={(e) => { e.stopPropagation(); markForgot(tooltip.sentenceIndex); }}
+                    style={{
+                        position: "absolute",
+                        left: tooltip.x,
+                        top: tooltip.y,
+                        transform: "translate(-50%, -100%)",
+                        padding: "4px 12px",
+                        borderRadius: "6px",
+                        background: "rgba(251,191,36,0.15)",
+                        border: "1px solid rgba(251,191,36,0.3)",
+                        color: "rgba(251,191,36,0.9)",
+                        fontSize: "11px",
+                        fontFamily: "'JetBrains Mono', monospace",
+                        cursor: "pointer",
+                        whiteSpace: "nowrap",
+                        zIndex: 100,
+                        backdropFilter: "blur(8px)",
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+                        animation: "fadeIn 0.15s ease",
+                    }}
+                >
+                    Forgot?
+                </div>
+            )}
         </div>
     );
 }
@@ -844,6 +970,14 @@ export default function IOMemorizer() {
     const [overrides, setOverrides] = useState(() => loadOverrides());
     const [revealedMap, setRevealedMap] = useState({});
     const [practiceMode, setPracticeMode] = useState(false);
+    const [forgotMap, setForgotMap] = useState(() => {
+        try { const raw = localStorage.getItem("memorizer_forgot"); return raw ? JSON.parse(raw) : {}; }
+        catch { return {}; }
+    });
+
+    useEffect(() => {
+        localStorage.setItem("memorizer_forgot", JSON.stringify(forgotMap));
+    }, [forgotMap]);
 
     const phase = SPEECH_DATA.phases[phaseIndex];
     const origPara = phase.paragraphs[paraIndex];
@@ -1253,6 +1387,11 @@ export default function IOMemorizer() {
                                             setRevealedMap(next);
                                         }}
                                         onHideAllGlobal={() => setRevealedMap({})}
+                                        forgot={forgotMap[`${phase.id}_${paraIndex}`] || {}}
+                                        setForgot={(f) => setForgotMap(prev => ({
+                                            ...prev,
+                                            [`${phase.id}_${paraIndex}`]: typeof f === 'function' ? f(prev[`${phase.id}_${paraIndex}`] || {}) : f,
+                                        }))}
                                     />
                                 </div>
                             )}
