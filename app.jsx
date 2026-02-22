@@ -100,10 +100,9 @@ const SPEECH_DATA = {
                         "We see this mechanism applied in Chapter 4, \"The Chameleon.\"",
                         "Noah is surrounded by Zulu muggers preparing to attack him.",
                         "Instead of cowering, he code-switches, greeting them fluently in their own tongue.",
-                        "He employs the metaphor \"I became a chameleon\" to frame his response as survival through changing form — a chameleon adapts to its environment, and Noah adapts to his, once more subverting victimhood and trauma for agency and resilience.",
-                        "The scene then proves this through situational irony: the muggers, shocked that a mixed-race child speaks Zulu, back off.",
-                        "The irony is that Noah's mixed cultural identity — the very source of his trauma — is what saves him.",
-                        "Through this inversion, Noah articulates the Global Issue: traumatic experience directly inspires the resilience that counters it."
+                        "The choices here crafts a situational irony: the muggers, shocked that a mixed-race child speaks Zulu, back off.",
+                        "The irony is that Noah's mixed cultural identity — the very source of his trauma as symbolized by the metaphor to the chameleon — is what allows him to navigate the danger.",
+                        "Through this inversion, Noah articulates the Global Issue: traumatic experiences directly inspire the resilience that counters them."
                     ]
                 },
                 {
