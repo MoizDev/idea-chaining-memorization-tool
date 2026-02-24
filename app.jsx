@@ -208,6 +208,21 @@ const SPEECH_DATA = {
                     ]
                 }
             ]
+        },
+        {
+            id: "conclusion", title: "Conclusion", shortTitle: "Conclusion",
+            paragraphs: [
+                {
+                    anchor: "CONCLUSION",
+                    blunt: "Wrap-up: both works prove trauma is the material from which resilience is constructed. Noah uses figurative language and narration; Miranda uses word painting, rhyme, and accumulation. Agency is not innate — it is built.",
+                    polished: [
+                        "In conclusion, both Noah and Miranda argue that trauma is not a force that traps individuals in victimhood — it is the very material from which resilience is constructed.",
+                        "In Born a Crime, Noah uses figurative language and retrospective narration to show how the violence of his environment trained his survival.",
+                        "In Hamilton, Miranda uses word painting, rhyme, and accumulation to show how deprivation fueled Hamilton's relentless drive to write himself out of poverty.",
+                        "Ultimately, both works prove that agency is not innate but built — the deliberate act of channeling traumatic experience into resilience."
+                    ]
+                }
+            ]
         }
     ]
 };
