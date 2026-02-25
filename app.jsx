@@ -113,7 +113,7 @@ const SPEECH_DATA = {
                         "After his mother is shot in the head by her abusive husband, the tone of the book shifts to horror.",
                         "Yet, when she wakes up in the hospital, her first act is to joke that Noah is now the \"best-looking\" person in the family.",
                         "Using dark humor to defy the tragedy, she proves the mechanism is absolute.",
-                        "Even facing death, she refuses the identity of the victim, cementing the argument that resilience is a deliberate, unyielding choice to rewrite one's own narrative."
+                        "Even facing death, she channels the trauma into humor — proving that traumatic experience inspires resilience even at its most extreme."
                     ]
                 }
             ]
